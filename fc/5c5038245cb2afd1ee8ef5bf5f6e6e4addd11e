@@ -1,0 +1,23 @@
+docs/gcp-iap-collaboration.md
+  s_09251b544e61f7::t_87abf8d2707d3f 1-88
+infra/gcp/iap/configure-host-proxy.sh
+  s_09251b544e61f7::t_c7b0983fa0bbfc 1-59
+infra/gcp/iap/provision-load-balancer.sh
+  s_09251b544e61f7::t_2573ba41b39371 1-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "fc5c5038245cb2afd1ee8ef5bf5f6e6e4addd11e",
+  "prompts": {},
+  "sessions": {
+    "s_09251b544e61f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "488f6912-7a4b-48fe-8d6b-3743cc04f8bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eric Levine <eric@clawvisor.com>"
+    }
+  }
+}
