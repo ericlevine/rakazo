@@ -37,7 +37,8 @@ forwarding_rule="${prefix}-https"
 network=$(gcloud compute instances describe "${instance}" --project="${project_id}" \
   --zone="${zone}" --format='value(networkInterfaces[0].network.basename())')
 
-gcloud services enable compute.googleapis.com iap.googleapis.com --project="${project_id}"
+gcloud services enable compute.googleapis.com iap.googleapis.com \
+  cloudresourcemanager.googleapis.com --project="${project_id}"
 
 if ! gcloud compute instance-groups unmanaged describe "${group}" --project="${project_id}" \
   --zone="${zone}" >/dev/null 2>&1; then
