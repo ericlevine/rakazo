@@ -54,6 +54,7 @@ NGINX
 rm -f /etc/nginx/sites-enabled/default
 ln -sfn /etc/nginx/sites-available/rakazo-iap /etc/nginx/sites-enabled/rakazo-iap
 nginx -t
-systemctl enable --now nginx
+systemctl enable nginx
+systemctl restart nginx
 curl --fail --silent --show-error http://127.0.0.1:8080/health >/dev/null
 echo "Host proxy is healthy on port 8080"
