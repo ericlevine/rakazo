@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { bootstrapUserSpace } from "./bootstrap-user.js";
+import { bootstrapCollaborativeUserSpace, bootstrapUserSpace } from "./bootstrap-user.js";
 import type { PrismaClient } from "./client.js";
 
 function makePrisma(settings: { id: string; ownerUserId: string | null } | null) {
@@ -22,7 +22,9 @@ function makePrisma(settings: { id: string; ownerUserId: string | null } | null)
         async (_input: { create: Record<string, unknown>; update: Record<string, unknown> }) =>
           settings ?? { id: "default" },
       ),
-      updateMany: vi.fn(async () => ({ count: settings && !settings.ownerUserId ? 1 : 0 })),
+      updateMany: vi.fn(async () => ({
+        count: settings && !settings.ownerUserId ? 1 : 0,
+      })),
     },
     memoryDocument: { findFirst: vi.fn(async () => null), create: create() },
     notificationPreference: { create: create() },
@@ -30,7 +32,10 @@ function makePrisma(settings: { id: string; ownerUserId: string | null } | null)
   return prisma;
 }
 
-const env = { signupsEnabled: "false", signupAllowlist: "a@example.com, b@example.com" };
+const env = {
+  signupsEnabled: "false",
+  signupAllowlist: "a@example.com, b@example.com",
+};
 
 describe("bootstrapUserSpace", () => {
   it("creates a personal organization with a default workspace", async () => {
@@ -151,7 +156,9 @@ describe("bootstrapUserSpace", () => {
 describe("bootstrapUserSpace concurrency", () => {
   it("recovers when a concurrent bootstrap wins the org, member, and settings races", async () => {
     const uniqueViolation = async () => {
-      throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+      throw Object.assign(new Error("Unique constraint failed"), {
+        code: "P2002",
+      });
     };
     const prisma = {
       organization: {
@@ -181,5 +188,120 @@ describe("bootstrapUserSpace concurrency", () => {
     );
 
     expect(result.spaceId).toBe("org-winner");
+  });
+});
+
+describe("bootstrapCollaborativeUserSpace", () => {
+  function makeCollaborativePrisma({
+    ownerUserId = "owner-1",
+    existingMembership = null,
+  }: {
+    ownerUserId?: string | null;
+    existingMembership?: { spaceId: string; organizationId: string } | null;
+  } = {}) {
+    const create = () => vi.fn(async (_input: { data: Record<string, unknown> }) => ({}));
+    const settings = { id: "default", ownerUserId };
+    const ownerSpace = {
+      id: "membership-1",
+      userId: "owner-1",
+      spaceId: "shared-space",
+      organizationId: "shared-org",
+      createdAt: new Date(0),
+    };
+    return {
+      organization: { create: create(), findUniqueOrThrow: vi.fn() },
+      member: { create: create() },
+      space: { create: create() },
+      spaceMember: {
+        create: create(),
+        findFirst: vi.fn(async ({ where }: { where: { userId: string } }) =>
+          where.userId === "owner-1" ? ownerSpace : existingMembership,
+        ),
+      },
+      deploymentSettings: {
+        findUnique: vi.fn(async () => settings),
+        upsert: vi.fn(async () => settings),
+        updateMany: vi.fn(async ({ data }: { data: { ownerUserId: string } }) => {
+          if (settings.ownerUserId === null) settings.ownerUserId = data.ownerUserId;
+          return { count: 1 };
+        }),
+      },
+      memoryDocument: { findFirst: vi.fn(async () => null), create: create() },
+      notificationPreference: { create: create() },
+    };
+  }
+
+  it("returns the deployment owner's existing default space", async () => {
+    const prisma = makeCollaborativePrisma();
+    await expect(
+      bootstrapCollaborativeUserSpace(prisma as unknown as PrismaClient, { id: "owner-1" }, env),
+    ).resolves.toEqual({ spaceId: "shared-space" });
+    expect(prisma.member.create).not.toHaveBeenCalled();
+  });
+
+  it("adds a later identity to the owner's organization and default space", async () => {
+    const prisma = makeCollaborativePrisma();
+    const result = await bootstrapCollaborativeUserSpace(
+      prisma as unknown as PrismaClient,
+      { id: "user-2" },
+      env,
+    );
+
+    expect(result).toEqual({ spaceId: "shared-space" });
+    expect(prisma.member.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        organizationId: "shared-org",
+        userId: "user-2",
+        role: "member",
+      }),
+    });
+    expect(prisma.spaceMember.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        spaceId: "shared-space",
+        organizationId: "shared-org",
+        userId: "user-2",
+        role: "member",
+      }),
+    });
+    expect(prisma.memoryDocument.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        spaceId: "shared-space",
+        userId: "user-2",
+      }),
+    });
+    expect(prisma.notificationPreference.create).toHaveBeenCalledWith({
+      data: { spaceId: "shared-space", userId: "user-2" },
+    });
+  });
+
+  it("adopts an existing first user's space as the deployment space", async () => {
+    const prisma = makeCollaborativePrisma({
+      ownerUserId: null,
+      existingMembership: {
+        spaceId: "manual-space",
+        organizationId: "manual-org",
+      },
+    });
+    prisma.spaceMember.findFirst.mockImplementation(
+      async ({ where }: { where: { userId: string } }) => ({
+        id: "membership-existing",
+        userId: where.userId,
+        spaceId: "manual-space",
+        organizationId: "manual-org",
+        createdAt: new Date(0),
+      }),
+    );
+
+    await expect(
+      bootstrapCollaborativeUserSpace(
+        prisma as unknown as PrismaClient,
+        { id: "manual-user" },
+        env,
+      ),
+    ).resolves.toEqual({ spaceId: "manual-space" });
+    expect(prisma.deploymentSettings.updateMany).toHaveBeenCalledWith({
+      where: { id: "default", ownerUserId: null },
+      data: { ownerUserId: "manual-user" },
+    });
   });
 });

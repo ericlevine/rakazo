@@ -5,6 +5,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { bearer, organization } from "better-auth/plugins";
+import { iapAuth } from "./iap.js";
 
 export interface AuthEnv {
   secret: string;
@@ -16,6 +17,7 @@ export interface AuthEnv {
   email?: TransactionalEmailProvider;
   onEmailError?: (error: unknown) => void;
   beforeDeleteUser?: (userId: string) => Promise<void>;
+  iapAudience?: string;
 }
 
 export async function resolveSignupPolicy(
@@ -114,6 +116,16 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
         allowUserToCreateOrganization: false,
         creatorRole: "owner",
       }),
+      ...(env.iapAudience
+        ? [
+            iapAuth({
+              audience: env.iapAudience,
+              prisma,
+              signupsEnabled: env.signupsEnabled,
+              signupAllowlist: env.signupAllowlist,
+            }),
+          ]
+        : []),
     ],
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
@@ -290,3 +302,5 @@ export const blockedAuthPaths = [
   "/organization/remove-member",
   "/organization/update-member-role",
 ];
+
+export { iapAuth, identityFromPayload, verifyIapAssertion } from "./iap.js";

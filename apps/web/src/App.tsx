@@ -5,7 +5,9 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "re
 import { Navigate, Route, Routes, useSearchParams } from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
 import { authClient } from "./lib/auth";
+import { provisionIapSession } from "./lib/iap-auth";
 import { markAfterPaint, markOnce } from "./lib/performance";
+import { selectSpace } from "./lib/rpc";
 import {
   holdUnreachableGate,
   sessionGate,
@@ -21,10 +23,14 @@ const AuthPage = lazy(() =>
   import("./pages/Auth").then((module) => ({ default: module.AuthPage })),
 );
 const PasswordResetPage = lazy(() =>
-  import("./pages/Auth").then((module) => ({ default: module.PasswordResetPage })),
+  import("./pages/Auth").then((module) => ({
+    default: module.PasswordResetPage,
+  })),
 );
 const OnboardingPage = lazy(() =>
-  import("./pages/Onboarding").then((module) => ({ default: module.OnboardingPage })),
+  import("./pages/Onboarding").then((module) => ({
+    default: module.OnboardingPage,
+  })),
 );
 const WelcomePage = lazy(() =>
   import("./pages/Welcome").then((module) => ({ default: module.WelcomePage })),
@@ -42,6 +48,10 @@ function SessionApp() {
   const session = authClient.useSession();
   const gate = sessionGate(session);
   const [holdingUnreachable, setHoldingUnreachable] = useState(false);
+  const [iapAttempt, setIapAttempt] = useState<"idle" | "pending" | "done">("idle");
+  const iapAttemptedRef = useRef(false);
+  const sessionRefetchRef = useRef(session.refetch);
+  sessionRefetchRef.current = session.refetch;
   const nextHolding = holdUnreachableGate(gate, holdingUnreachable);
   if (nextHolding !== holdingUnreachable) setHoldingUnreachable(nextHolding);
 
@@ -51,10 +61,23 @@ function SessionApp() {
     markAfterPaint("rk:renderer:session-painted");
   }, [session.isPending]);
 
+  useEffect(() => {
+    if (gate !== "anonymous" || iapAttemptedRef.current) return;
+    iapAttemptedRef.current = true;
+    setIapAttempt("pending");
+    void provisionIapSession()
+      .then(async (result) => {
+        if (!result) return;
+        selectSpace(result.spaceId);
+        await sessionRefetchRef.current();
+      })
+      .finally(() => setIapAttempt("done"));
+  }, [gate]);
+
   if (showSessionUnavailable(gate, nextHolding)) {
     return <SessionUnavailable refetch={session.refetch} />;
   }
-  if (gate === "loading") {
+  if (gate === "loading" || (gate === "anonymous" && iapAttempt !== "done")) {
     return window.location.pathname.startsWith("/app") ? (
       <ShellSkeleton />
     ) : (

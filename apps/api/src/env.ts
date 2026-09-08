@@ -24,6 +24,8 @@ export interface AppEnv {
   apiHost: string;
   signupsEnabled: string | undefined;
   signupAllowlist: string | undefined;
+  /** Exact audience of the IAP backend JWT. Enables IAP account provisioning when set. */
+  iapAudience: string | undefined;
   encryptionKey: string;
   dataDir: string;
   /** Opt-in Pi JSONL session recording under DATA_DIR/pi-sessions. Default off. */
@@ -111,6 +113,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     apiHost: source.API_HOST ?? "127.0.0.1",
     signupsEnabled: source.SIGNUPS_ENABLED,
     signupAllowlist: source.SIGNUP_ALLOWLIST,
+    iapAudience: optional(source.IAP_AUDIENCE),
     encryptionKey: resolveEncryptionKey(source),
     dataDir: source.DATA_DIR ?? "./data",
     piSessionRecording: source.PI_SESSION_RECORDING === "true",

@@ -43,6 +43,16 @@ describe("loadEnv", () => {
     ).toBe("https://catalog.example.test/feed");
   });
 
+  it("loads the exact IAP backend audience when configured", () => {
+    expect(loadEnv(base).iapAudience).toBeUndefined();
+    expect(
+      loadEnv({
+        ...base,
+        IAP_AUDIENCE: " /projects/123456/global/backendServices/987654 ",
+      }).iapAudience,
+    ).toBe("/projects/123456/global/backendServices/987654");
+  });
+
   it("falls back to none when a remote provider key is missing", () => {
     expect(
       loadEnv({

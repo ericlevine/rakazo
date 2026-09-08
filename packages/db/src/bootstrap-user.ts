@@ -137,3 +137,98 @@ export async function bootstrapUserSpace(
     });
   return { spaceId: orgId };
 }
+
+/**
+ * Put an identity admitted by a deployment-level gateway into the deployment
+ * owner's default space. The first admitted identity still creates and owns
+ * the deployment; later identities become members of that same collaboration
+ * boundary instead of receiving an unrelated empty workspace.
+ */
+export async function bootstrapCollaborativeUserSpace(
+  prisma: PrismaClient,
+  user: { id: string },
+  env: SignupPolicyEnv,
+): Promise<{ spaceId: string }> {
+  let settings = await prisma.deploymentSettings.findUnique({ where: { id: "default" } });
+  if (!settings?.ownerUserId) {
+    const existing = await prisma.spaceMember.findFirst({
+      where: { userId: user.id },
+      orderBy: [{ space: { isDefault: "desc" } }, { createdAt: "asc" }, { id: "asc" }],
+    });
+    if (existing) {
+      await prisma.deploymentSettings.updateMany({
+        where: { id: "default", ownerUserId: null },
+        data: { ownerUserId: user.id },
+      });
+    } else {
+      await bootstrapUserSpace(prisma, user, env);
+    }
+    settings = await prisma.deploymentSettings.findUnique({ where: { id: "default" } });
+  }
+
+  const ownerUserId = settings?.ownerUserId;
+  if (!ownerUserId) {
+    return bootstrapUserSpace(prisma, user, env);
+  }
+  const ownerSpace = await prisma.spaceMember.findFirst({
+    where: { userId: ownerUserId, space: { isDefault: true } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  if (!ownerSpace) {
+    throw new Error("Deployment owner has no default space");
+  }
+  if (ownerUserId === user.id) return { spaceId: ownerSpace.spaceId };
+
+  await prisma.member
+    .create({
+      data: {
+        id: newId(),
+        organizationId: ownerSpace.organizationId,
+        userId: user.id,
+        role: "member",
+        createdAt: new Date(),
+      },
+    })
+    .catch((error: unknown) => {
+      if (!isUniqueViolation(error)) throw error;
+    });
+  await prisma.spaceMember
+    .create({
+      data: {
+        id: newId(),
+        spaceId: ownerSpace.spaceId,
+        organizationId: ownerSpace.organizationId,
+        userId: user.id,
+        role: "member",
+        createdAt: new Date(),
+      },
+    })
+    .catch((error: unknown) => {
+      if (!isUniqueViolation(error)) throw error;
+    });
+
+  const hasMemory = await prisma.memoryDocument.findFirst({
+    where: { spaceId: ownerSpace.spaceId, userId: user.id, scope: "user", path: "MEMORY.md" },
+  });
+  if (!hasMemory) {
+    await prisma.memoryDocument
+      .create({
+        data: {
+          spaceId: ownerSpace.spaceId,
+          userId: user.id,
+          scope: "user",
+          path: "MEMORY.md",
+          content: "# Space memory\n\nPreferences and context kept within this space live here.\n",
+        },
+      })
+      .catch((error: unknown) => {
+        if (!isUniqueViolation(error)) throw error;
+      });
+  }
+  await prisma.notificationPreference
+    .create({ data: { spaceId: ownerSpace.spaceId, userId: user.id } })
+    .catch((error: unknown) => {
+      if (!isUniqueViolation(error)) throw error;
+    });
+  return { spaceId: ownerSpace.spaceId };
+}

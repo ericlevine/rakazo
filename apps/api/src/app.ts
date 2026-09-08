@@ -286,6 +286,7 @@ export async function createApp(
     webOrigin: env.webOrigin,
     signupsEnabled: env.signupsEnabled,
     signupAllowlist: env.signupAllowlist,
+    iapAudience: env.iapAudience,
     email,
     onEmailError: (error) => getLogger().error("transactional email delivery failed", error),
     extraOrigins: [
