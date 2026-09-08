@@ -1,0 +1,21 @@
+packages/auth/package.json
+  s_09251b544e61f7::t_aff03388efdb83 21-22
+pnpm-lock.yaml
+  s_09251b544e61f7::t_20ac3d64fb4a9b 645-647
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "55468b4334581a41a4c6814b2c39f5d7432247d1",
+  "prompts": {},
+  "sessions": {
+    "s_09251b544e61f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "488f6912-7a4b-48fe-8d6b-3743cc04f8bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eric Levine <eric@clawvisor.com>"
+    }
+  }
+}
