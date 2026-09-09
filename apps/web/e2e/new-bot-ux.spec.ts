@@ -153,6 +153,42 @@ test("Access choice assigns matching visibility and computer", async ({ page }, 
   });
 });
 
+test("mobile create form clears the message composer", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 700 });
+  const stamp = Date.now();
+  await signup(page, `mobile-create-${stamp}@rakazo.test`, "password12", "Mobile Create");
+  await completeOnboarding(page);
+  await page.goto("/app");
+  await page.waitForURL(/\/app\/[^/]+$/);
+
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await openNewBot(page);
+  const form = page.getByTestId("create-bot-form");
+  await form.locator("label:has-text('Name') input").fill("Mobile Bot");
+  const create = form.getByRole("button", { name: "Create", exact: true });
+  await page
+    .getByTestId("side-panel")
+    .locator(".rk-scroll")
+    .evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
+
+  const [createBox, composerBox] = await Promise.all([
+    create.boundingBox(),
+    page.locator('fieldset[aria-label="Message composer"]').boundingBox(),
+  ]);
+  expect(createBox).toBeTruthy();
+  expect(composerBox).toBeTruthy();
+  expect(createBox!.y + createBox!.height).toBeLessThanOrEqual(composerBox!.y);
+  await expect
+    .poll(() =>
+      create.evaluate((button) => {
+        const box = button.getBoundingClientRect();
+        const target = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return target === button || button.contains(target);
+      }),
+    )
+    .toBe(true);
+});
+
 test("second bot from plus opens create form before persist", async ({ page }, testInfo) => {
   const stamp = Date.now();
   await signup(page, `second-bot-form-${stamp}@rakazo.test`, "password12", "Second Bot Form");

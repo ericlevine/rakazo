@@ -115,7 +115,7 @@ export function CreateBotForm({
   }
 
   return (
-    <div data-testid="create-bot-form">
+    <div data-testid="create-bot-form" className="pb-32 md:pb-0">
       <div className="mb-4 flex items-center justify-between">
         <span className="text-[13.5px] text-muted-foreground">
           <Trans>New bot</Trans>
