@@ -1,4 +1,6 @@
 export const ZH_MESSAGES: Record<string, string> = {
+  Access: "访问权限",
+  Workspace: "工作区",
   "Release computer": "释放电脑",
   "Release interrupted computer?": "释放中断的电脑？",
   "Stop all workers and confirm that provider operations have stopped before releasing this computer.":

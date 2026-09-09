@@ -2,6 +2,7 @@ import {
   BOT_DESCRIPTION_MAX_LENGTH,
   BOT_NAME_MAX_LENGTH,
   BOT_TITLE_MAX_LENGTH,
+  type BotVisibility,
   type ComputerMode,
   normalizeCreateBotProfile,
 } from "@rakazo/contracts";
@@ -22,6 +23,7 @@ export default function NewBot() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [computerMode, setComputerMode] = useState<ComputerMode>("team");
+  const [visibility, setVisibility] = useState<BotVisibility>("private");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -49,6 +51,7 @@ export default function NewBot() {
         ...normalizeCreateBotProfile({ name, title, description }),
         notifyOnFinish: true,
         computerMode,
+        visibility,
       });
       allowFocusPrompt(bot.id);
       router.replace({ pathname: "/thread", params: { botId: bot.id, name: bot.name } });
@@ -142,6 +145,30 @@ export default function NewBot() {
           }}
         />
         <ComputerModePicker value={computerMode} onChange={setComputerMode} />
+        <Text style={{ color: tokens.mutedForeground, marginTop: 16, fontSize: 14 }}>
+          {t("Access")}
+        </Text>
+        <ScrollView horizontal contentContainerStyle={{ gap: 10, marginTop: 8 }}>
+          {(["private", "workspace"] as const).map((option) => (
+            <Pressable
+              key={option}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: visibility === option }}
+              onPress={() => setVisibility(option)}
+              style={{
+                borderWidth: 1,
+                borderColor: visibility === option ? tokens.foreground : tokens.border,
+                borderRadius: 11,
+                paddingHorizontal: 18,
+                paddingVertical: 12,
+              }}
+            >
+              <Text style={{ color: tokens.foreground }}>
+                {option === "private" ? t("Private") : t("Workspace")}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
         {error ? <Text style={{ color: tokens.destructive, marginTop: 16 }}>{error}</Text> : null}
         <Pressable
           onPress={() => void create()}

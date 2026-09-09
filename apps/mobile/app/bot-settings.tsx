@@ -3,6 +3,7 @@ import {
   BOT_DESCRIPTION_MAX_LENGTH,
   BOT_NAME_MAX_LENGTH,
   BOT_TITLE_MAX_LENGTH,
+  type BotVisibility,
   type ComputerMode,
   normalizeCreateBotProfile,
   type ThinkingLevel,
@@ -51,6 +52,7 @@ export default function BotSettingsScreen() {
   const [description, setDescription] = useState("");
   const [color, setColor] = useState<string>(BOT_COLORS[0]);
   const [computerMode, setComputerMode] = useState<ComputerMode>("team");
+  const [visibility, setVisibility] = useState<BotVisibility>("private");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [modelKey, setModelKey] = useState("");
   const [thinkingLevel, setThinkingLevel] = useState("");
@@ -66,12 +68,17 @@ export default function BotSettingsScreen() {
     if (!botId) return;
     void rpc<BotSettingsRecord>("bots/get", { botId })
       .then((next) => {
+        if (!next.canManage) {
+          router.back();
+          return;
+        }
         setBot(next);
         setName(next.name);
         setTitle(next.title);
         setDescription(next.description ?? "");
         setColor(next.color);
         setComputerMode(next.computerMode);
+        setVisibility(next.visibility);
         setModelKey(
           next.modelProvider && next.modelId
             ? modelOptionKey(next.modelProvider, next.modelId)
@@ -80,7 +87,7 @@ export default function BotSettingsScreen() {
         setThinkingLevel(next.thinkingLevel ?? "");
       })
       .catch((err) => setError(err instanceof Error ? err.message : t("Could not load bot")));
-  }, [botId]);
+  }, [botId, router, t]);
 
   useEffect(() => {
     void Promise.all([
@@ -240,6 +247,7 @@ export default function BotSettingsScreen() {
         modelProvider?: string | null;
         modelId?: string | null;
         thinkingLevel?: ThinkingLevel | null;
+        visibility?: BotVisibility;
       } = { botId };
       if (profile.name !== bot.name) input.name = profile.name;
       if (profile.title !== bot.title) input.title = profile.title;
@@ -249,6 +257,7 @@ export default function BotSettingsScreen() {
         input.instructions = profile.instructions;
       }
       if (color !== bot.color) input.color = color;
+      if (visibility !== bot.visibility) input.visibility = visibility;
       const modelChanged =
         (selected?.provider ?? null) !== (bot.modelProvider ?? null) ||
         (selected?.modelId ?? null) !== (bot.modelId ?? null);
@@ -371,6 +380,30 @@ export default function BotSettingsScreen() {
           ))}
         </ScrollView>
         <ComputerModePicker value={computerMode} onChange={setComputerMode} />
+        <Text style={{ color: tokens.mutedForeground, marginTop: 16, fontSize: 14 }}>
+          {t("Access")}
+        </Text>
+        <ScrollView horizontal contentContainerStyle={{ gap: 10, marginTop: 8 }}>
+          {(["private", "workspace"] as const).map((option) => (
+            <Pressable
+              key={option}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: visibility === option }}
+              onPress={() => setVisibility(option)}
+              style={{
+                borderWidth: 1,
+                borderColor: visibility === option ? tokens.foreground : tokens.border,
+                borderRadius: 11,
+                paddingHorizontal: 18,
+                paddingVertical: 12,
+              }}
+            >
+              <Text style={{ color: tokens.foreground }}>
+                {option === "private" ? t("Private") : t("Workspace")}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("Advanced")}

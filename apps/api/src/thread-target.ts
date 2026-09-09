@@ -1029,7 +1029,6 @@ export async function setThreadUnreadState(
     where: {
       id: target.threadId,
       spaceId: actor.spaceId,
-      userId: actor.userId,
       unread: { not: unread },
     },
     data: { unread },

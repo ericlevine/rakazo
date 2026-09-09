@@ -33,6 +33,8 @@ type GroupRecord = {
       id: string;
       name: string;
       color: string;
+      userId: string;
+      visibility: string;
       runs: Array<{ status: string }>;
     };
   }>;
@@ -95,7 +97,13 @@ function hasMinimumActiveMembers(members: readonly unknown[]) {
   return members.length >= GROUP_MEMBER_MIN;
 }
 
-async function assertOwnedBots(
+function hasAccessibleMembers(members: GroupRecord["members"], actor: Actor) {
+  return members.every(
+    (member) => member.bot.userId === actor.userId || member.bot.visibility === "workspace",
+  );
+}
+
+async function assertAccessibleBots(
   prisma: PrismaClient,
   actor: Actor,
   botIds: string[],
@@ -110,7 +118,7 @@ async function assertOwnedBots(
     where: {
       id: { in: unique },
       spaceId: actor.spaceId,
-      userId: actor.userId,
+      OR: [{ userId: actor.userId }, { visibility: "workspace" }],
       archivedAt: null,
     },
     select: { id: true, name: true, color: true },
@@ -138,6 +146,8 @@ const groupInclude = {
           id: true,
           name: true,
           color: true,
+          userId: true,
+          visibility: true,
           runs: activeRunSelection,
         },
       },
@@ -156,6 +166,8 @@ const groupTargetInclude = {
           id: true,
           name: true,
           color: true,
+          userId: true,
+          visibility: true,
           runs: activeRunSelection,
         },
       },
@@ -195,7 +207,11 @@ export function createGroupRepos(prisma: PrismaClient) {
       orderBy: [{ pinned: "desc" }, { updatedAt: "desc" }],
     });
     return groups
-      .filter((group) => hasMinimumActiveMembers(group.members))
+      .filter(
+        (group) =>
+          hasMinimumActiveMembers(group.members) &&
+          hasAccessibleMembers(group.members as GroupRecord["members"], actor),
+      )
       .map((group) => mapSpaceGroup(group));
   }
 
@@ -211,7 +227,11 @@ export function createGroupRepos(prisma: PrismaClient) {
         orderBy: [{ pinned: "desc" }, { updatedAt: "desc" }],
       });
       return groups
-        .filter((group) => hasMinimumActiveMembers(group.members))
+        .filter(
+          (group) =>
+            hasMinimumActiveMembers(group.members) &&
+            hasAccessibleMembers(group.members as GroupRecord["members"], actor),
+        )
         .map((group) => mapGroup(group as GroupRecord));
     },
 
@@ -227,7 +247,12 @@ export function createGroupRepos(prisma: PrismaClient) {
         },
         include: groupInclude,
       });
-      if (!group || !hasMinimumActiveMembers(group.members)) throw new IsolationError();
+      if (
+        !group ||
+        !hasMinimumActiveMembers(group.members) ||
+        !hasAccessibleMembers(group.members as GroupRecord["members"], actor)
+      )
+        throw new IsolationError();
       return group as GroupRecord;
     },
 
@@ -241,12 +266,17 @@ export function createGroupRepos(prisma: PrismaClient) {
         },
         include: groupTargetInclude,
       });
-      if (!group || !hasMinimumActiveMembers(group.members)) throw new IsolationError();
+      if (
+        !group ||
+        !hasMinimumActiveMembers(group.members) ||
+        !hasAccessibleMembers(group.members as GroupRecord["members"], actor)
+      )
+        throw new IsolationError();
       return group;
     },
 
     async createGroup(actor: Actor, input: { name: string; botIds: string[] }): Promise<Group> {
-      const members = await assertOwnedBots(prisma, actor, input.botIds);
+      const members = await assertAccessibleBots(prisma, actor, input.botIds);
       const created = await prisma.$transaction(async (tx) => {
         await lockSpaceForContentCreation(tx, {
           spaceId: actor.spaceId,
@@ -287,7 +317,9 @@ export function createGroupRepos(prisma: PrismaClient) {
         sectionId?: string | null;
       },
     ): Promise<{ group: Group; cancelledRunIds: string[] }> {
-      const members = input.botIds ? await assertOwnedBots(prisma, actor, input.botIds) : undefined;
+      const members = input.botIds
+        ? await assertAccessibleBots(prisma, actor, input.botIds)
+        : undefined;
       const updated = await prisma.$transaction(async (tx) => {
         await lockOwnedGroup(tx, actor, input.groupId);
         const current = await tx.chatGroup.findFirst({

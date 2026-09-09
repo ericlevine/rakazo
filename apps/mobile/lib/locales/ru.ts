@@ -1,4 +1,6 @@
 export const RU_MESSAGES: Record<string, string> = {
+  Access: "Доступ",
+  Workspace: "Рабочее пространство",
   "Ask the server owner to configure this provider.":
     "Попросите владельца сервера настроить этого провайдера.",
   "Client ID": "ID клиента",

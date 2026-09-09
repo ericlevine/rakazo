@@ -6,6 +6,7 @@ import type {
   AgentSkillCatalogEntry,
   Bot,
   BotSection,
+  BotVisibility,
   ComputerMode,
   ComputerReleaseReason,
   ComputerStatus,
@@ -2159,12 +2160,14 @@ export function ShellPage() {
     title: string;
     description: string;
     computerMode: ComputerMode;
+    visibility: BotVisibility;
   }) {
     const isFirstBot = botsRef.current.length === 0;
     const bot = await rpc.bots.create({
       ...normalizeCreateBotProfile(input),
       notifyOnFinish: true,
       computerMode: input.computerMode,
+      visibility: input.visibility,
     });
     setBots((current) =>
       current.some((item) => item.id === bot.id) ? current : [bot, ...current],
@@ -2568,7 +2571,7 @@ export function ShellPage() {
               {sidebarGroups.map((group) => {
                 const collapsed = Boolean(group.title) && collapsedSidebarSections.has(group.key);
                 const groupBotIds = group.bots.flatMap((item) =>
-                  item.kind === "bot" ? [item.chat.id] : [],
+                  item.kind === "bot" && item.chat.canManage ? [item.chat.id] : [],
                 );
                 return (
                   <div key={group.key} data-sidebar-group={group.key}>
@@ -2648,13 +2651,13 @@ export function ShellPage() {
                         <button
                           key={`${item.kind}:${item.chat.id}`}
                           type="button"
-                          draggable={item.kind === "bot"}
+                          draggable={item.kind === "bot" && item.chat.canManage}
                           data-roster-bot-id={item.kind === "bot" ? item.chat.id : undefined}
                           aria-keyshortcuts={
                             item.kind === "bot" ? "Alt+ArrowUp Alt+ArrowDown" : undefined
                           }
                           onDragStart={(event) => {
-                            if (item.kind !== "bot") return;
+                            if (item.kind !== "bot" || !item.chat.canManage) return;
                             setDraggedBotId(item.chat.id);
                             event.dataTransfer.effectAllowed = "move";
                             event.dataTransfer.setData("text/plain", item.chat.id);
@@ -3212,7 +3215,7 @@ export function ShellPage() {
                       }}
                     />
                   ) : null}
-                  {active ? (
+                  {active?.canManage ? (
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -3355,7 +3358,7 @@ export function ShellPage() {
                 onCreate={(input) => createBot(input)}
               />
             ) : null}
-            {panel === "settings" && active ? (
+            {panel === "settings" && active?.canManage ? (
               <BotSettings
                 key={active.id}
                 bot={active}

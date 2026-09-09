@@ -6,6 +6,9 @@ import { McpHeadersSchema, McpRemoteEndpointSchema, McpTransportSchema } from ".
 export const ComputerModeSchema = z.enum(["team", "dedicated"]);
 export type ComputerMode = z.infer<typeof ComputerModeSchema>;
 
+export const BotVisibilitySchema = z.enum(["private", "workspace"]);
+export type BotVisibility = z.infer<typeof BotVisibilitySchema>;
+
 export const MemoryScopeSchema = z.enum(["isolated", "shared"]);
 export type MemoryScopeValue = z.infer<typeof MemoryScopeSchema>;
 
@@ -54,6 +57,8 @@ export const BotSchema = z.object({
   unread: z.boolean(),
   parentBotId: Id.nullable(),
   memoryScope: MemoryScopeSchema.nullable(),
+  visibility: BotVisibilitySchema,
+  canManage: z.boolean(),
   threadId: Id,
   preview: z.string(),
   status: z.string(),
@@ -161,6 +166,8 @@ export const SpaceBotSchema = BotSchema.pick({
   preview: true,
   status: true,
   updatedAt: true,
+  visibility: true,
+  canManage: true,
 });
 export type SpaceBot = z.infer<typeof SpaceBotSchema>;
 
@@ -284,6 +291,7 @@ export const CreateBotInput = z.object({
   notifyOnFinish: z.boolean().default(true),
   color: z.string().optional(),
   computerMode: ComputerModeSchema.default("team"),
+  visibility: BotVisibilitySchema.default("private"),
   /** Idempotency key within a space (unique with spaceId). */
   spawnKey: z.string().trim().min(1).max(120).optional(),
 });
@@ -312,6 +320,7 @@ export const UpdateBotInput = z
     color: z.string().optional(),
     pinned: z.boolean().optional(),
     memoryScope: MemoryScopeSchema.nullable().optional(),
+    visibility: BotVisibilitySchema.optional(),
     sectionId: Id.nullable().optional(),
     voiceId: z.string().max(120).nullable().optional(),
     autoSpeak: z.boolean().optional(),

@@ -336,6 +336,7 @@ model Bot {
   parentBotId       String?
   spawnKey          String?
   memoryScope       String?
+  visibility        String            @default("private")
   parent            Bot?              @relation("BotChildren", fields: [parentBotId], references: [id], onDelete: SetNull)
   children          Bot[]             @relation("BotChildren")
   createdAt         DateTime          @default(now())
@@ -370,6 +371,7 @@ model Bot {
 
   @@unique([spaceId, spawnKey])
   @@index([spaceId, userId, archivedAt, pinned, updatedAt])
+  @@index([spaceId, visibility, archivedAt, pinned, updatedAt])
   @@index([sectionId])
   @@index([computerId])
   @@index([parentBotId])

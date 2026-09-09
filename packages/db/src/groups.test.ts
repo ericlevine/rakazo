@@ -18,12 +18,23 @@ describe("listSpaceGroupsForSpaces", () => {
           messages: [{ blocks: [{ kind: "text", text: "Escalation pending" }] }],
         },
         members: [
-          { bot: { id: "bot-1", name: "Triage", color: "#111", runs: [] } },
+          {
+            bot: {
+              id: "bot-1",
+              name: "Triage",
+              color: "#111",
+              userId: "user-1",
+              visibility: "private",
+              runs: [],
+            },
+          },
           {
             bot: {
               id: "bot-2",
               name: "Responder",
               color: "#222",
+              userId: "user-2",
+              visibility: "workspace",
               runs: [{ status: "running" }],
             },
           },

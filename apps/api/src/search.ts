@@ -67,12 +67,16 @@ export async function querySpaceSearch(
   const bots = await prisma.bot.findMany({
     where: {
       spaceId: actor.spaceId,
-      userId: actor.userId,
       archivedAt: null,
-      OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { title: { contains: query, mode: "insensitive" } },
-        { description: { contains: query, mode: "insensitive" } },
+      AND: [
+        { OR: [{ userId: actor.userId }, { visibility: "workspace" }] },
+        {
+          OR: [
+            { name: { contains: query, mode: "insensitive" } },
+            { title: { contains: query, mode: "insensitive" } },
+            { description: { contains: query, mode: "insensitive" } },
+          ],
+        },
       ],
     },
     take: CONVERSATION_HIT_LIMIT,
@@ -237,7 +241,7 @@ export async function querySpaceSearch(
     INNER JOIN threads t ON t.id = m."threadId"
     INNER JOIN bots b ON b.id = t."botId"
     WHERE t."spaceId" = ${actor.spaceId}
-      AND t."userId" = ${actor.userId}
+      AND (t."userId" = ${actor.userId} OR b.visibility = 'workspace')
       AND b."archivedAt" IS NULL
       AND m.blocks::text ILIKE ${pattern}
     ORDER BY m."createdAt" DESC

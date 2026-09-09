@@ -16,9 +16,11 @@ and issues its ordinary session cookie.
 - IAP identities bypass Rakazo's password-signup policy intentionally: the IAP
   IAM policy is the deployment's allowlist. Password signup behavior is unchanged.
 - The first admitted identity owns the deployment. Additional admitted
-  identities join the owner's default organization and space as members, so
-  bots and conversations are shared. User memory, notification settings, and
-  personal credentials remain user-scoped.
+  identities join the owner's default organization and space as members.
+  Agents are private by default; an owner can make an agent workspace-visible
+  so other space members can use its shared conversation. Agent management,
+  user memory, notification settings, and personal credentials remain
+  user-scoped.
 
 Only grant `roles/iap.httpsResourceAccessor` to named users or a controlled
 Google group. Do not grant it to `allAuthenticatedUsers`.

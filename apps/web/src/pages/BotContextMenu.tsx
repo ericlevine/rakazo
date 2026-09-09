@@ -26,7 +26,9 @@ import {
 
 export type ContextMenuPosition = { x: number; y: number };
 
-type ChatMenuTarget = Pick<Bot, "name" | "pinned" | "sectionId" | "unread">;
+type ChatMenuTarget = Pick<Bot, "name" | "pinned" | "sectionId" | "unread"> & {
+  canManage?: boolean;
+};
 
 export function BotContextMenu({
   bot,
@@ -58,6 +60,7 @@ export function BotContextMenu({
   onDelete: () => void;
 }) {
   const { t } = useLingui();
+  const canManage = bot.canManage !== false;
 
   return (
     <DropdownMenu
@@ -84,61 +87,71 @@ export function BotContextMenu({
         sideOffset={0}
         className="max-h-[min(420px,calc(100vh-16px))] w-[264px] overflow-y-auto"
       >
-        <DropdownMenuItem onClick={onTogglePinned}>
-          <Pin />
-          {bot.pinned ? t`Unpin` : t`Pin`}
-        </DropdownMenuItem>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <Folder />
-            {t`Move to`}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="max-h-[min(420px,calc(100vh-16px))] min-w-[180px] overflow-y-auto">
-            {sections.map((section) => (
-              <DropdownMenuItem key={section.id} onClick={() => onMoveToSection(section.id)}>
-                <Folder />
-                <span dir="auto">{section.name}</span>
-                {bot.sectionId === section.id ? <Check className="ms-auto" /> : null}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuItem onClick={() => onMoveToSection(null)}>
+        {canManage ? (
+          <DropdownMenuItem onClick={onTogglePinned}>
+            <Pin />
+            {bot.pinned ? t`Unpin` : t`Pin`}
+          </DropdownMenuItem>
+        ) : null}
+        {canManage ? (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
               <Folder />
-              {t`Unassigned`}
-              {bot.sectionId === null ? <Check className="ms-auto" /> : null}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onCreateSection}>
-              <FolderPlus />
-              {t`New section`}
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+              {t`Move to`}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="max-h-[min(420px,calc(100vh-16px))] min-w-[180px] overflow-y-auto">
+              {sections.map((section) => (
+                <DropdownMenuItem key={section.id} onClick={() => onMoveToSection(section.id)}>
+                  <Folder />
+                  <span dir="auto">{section.name}</span>
+                  {bot.sectionId === section.id ? <Check className="ms-auto" /> : null}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem onClick={() => onMoveToSection(null)}>
+                <Folder />
+                {t`Unassigned`}
+                {bot.sectionId === null ? <Check className="ms-auto" /> : null}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onCreateSection}>
+                <FolderPlus />
+                {t`New section`}
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        ) : null}
         <DropdownMenuItem onClick={onToggleUnread}>
           {bot.unread ? <BellDot /> : <Bell />}
           {bot.unread ? t`Mark as Read` : t`Mark as Unread`}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onEdit}>
-          <Pencil />
-          {t`Edit Profile`}
-        </DropdownMenuItem>
+        {canManage ? (
+          <DropdownMenuItem onClick={onEdit}>
+            <Pencil />
+            {t`Edit Profile`}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem onClick={onDuplicate}>
           <Copy />
           {t`Duplicate`}
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onClear}>
-          <Eraser />
-          {t`Clear conversation`}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onArchive}>
-          <Archive />
-          {t`Archive`}
-        </DropdownMenuItem>
-        <DropdownMenuItem variant="destructive" onClick={onDelete}>
-          <Trash2 />
-          {t`Delete`}
-        </DropdownMenuItem>
+        {canManage ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onClear}>
+              <Eraser />
+              {t`Clear conversation`}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onArchive}>
+              <Archive />
+              {t`Archive`}
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onClick={onDelete}>
+              <Trash2 />
+              {t`Delete`}
+            </DropdownMenuItem>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

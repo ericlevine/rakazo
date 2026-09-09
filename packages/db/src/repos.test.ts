@@ -27,6 +27,7 @@ const baseBot = {
   archivedAt: null,
   parentBotId: null,
   memoryScope: null as string | null,
+  visibility: "private",
   createdAt: new Date("2026-08-19T00:00:00.000Z"),
   updatedAt: new Date("2026-08-19T00:00:00.000Z"),
   thread: { id: "thread-1", unread: false, messages: [] },
@@ -308,6 +309,8 @@ describe("createRepos.listSpaceBotsForSpaces", () => {
         notifyOnFinish: false,
         pinned: true,
         sectionId: null,
+        userId: "user-2",
+        visibility: "workspace",
         updatedAt: new Date("2026-08-20T00:00:00.000Z"),
         thread: {
           unread: true,
@@ -332,11 +335,16 @@ describe("createRepos.listSpaceBotsForSpaces", () => {
         preview: "Waiting for a reply",
         status: "running",
         updatedAt: "2026-08-20T00:00:00.000Z",
+        visibility: "workspace",
+        canManage: false,
       },
     ]);
     const query = findMany.mock.calls[0]![0];
     expect(query.where).toEqual(
-      expect.objectContaining({ spaceId: { in: ["ws-2"] }, userId: actor.userId }),
+      expect.objectContaining({
+        spaceId: { in: ["ws-2"] },
+        OR: [{ userId: actor.userId }, { visibility: "workspace" }],
+      }),
     );
     expect(query.select).not.toHaveProperty("description");
     expect(query.select).not.toHaveProperty("instructions");

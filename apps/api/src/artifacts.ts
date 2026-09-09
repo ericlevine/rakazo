@@ -95,6 +95,26 @@ export async function getOwnedArtifact(
   return readArtifact(deps.artifacts, actor, row, input.botId);
 }
 
+export async function getBotArtifact(
+  deps: {
+    prisma: PrismaClient;
+    artifacts: ArtifactStore;
+  },
+  actor: Actor,
+  input: { botId: string; artifactId: string },
+) {
+  const row = await deps.prisma.artifact.findFirst({
+    where: {
+      id: input.artifactId,
+      botId: input.botId,
+      groupId: null,
+      spaceId: actor.spaceId,
+    },
+  });
+  if (!row) throw new IsolationError();
+  return readArtifact(deps.artifacts, actor, row, input.botId);
+}
+
 export async function getSpaceArtifact(
   deps: {
     prisma: PrismaClient;

@@ -44,6 +44,8 @@ function mapBot(
     archivedAt: Date | null;
     parentBotId: string | null;
     memoryScope: string | null;
+    visibility: string;
+    userId: string;
     createdAt: Date;
     updatedAt: Date;
     thread: { id: string; unread: boolean } | null;
@@ -60,6 +62,7 @@ function mapBot(
   },
   preview = "",
   status = "idle",
+  viewerUserId = bot.userId,
 ): Bot {
   if (!bot.thread) {
     throw new IsolationError("Bot is missing its thread");
@@ -79,6 +82,8 @@ function mapBot(
     unread: bot.thread.unread,
     parentBotId: bot.parentBotId,
     memoryScope: bot.memoryScope as "isolated" | "shared" | null,
+    visibility: bot.visibility as "private" | "workspace",
+    canManage: bot.userId === viewerUserId,
     threadId: bot.thread.id,
     preview,
     status,
@@ -122,7 +127,7 @@ export function createRepos(prisma: PrismaClient) {
     const bots = await prisma.bot.findMany({
       where: {
         spaceId: { in: spaceIds },
-        userId: actor.userId,
+        OR: [{ userId: actor.userId }, { visibility: "workspace" }],
         archivedAt: null,
       },
       select: {
@@ -135,6 +140,8 @@ export function createRepos(prisma: PrismaClient) {
         pinned: true,
         sectionId: true,
         updatedAt: true,
+        visibility: true,
+        userId: true,
         thread: {
           select: {
             unread: true,
@@ -164,6 +171,8 @@ export function createRepos(prisma: PrismaClient) {
         preview: previewFromBlocks(bot.thread.messages[0]?.blocks),
         status: bot.runs[0]?.status ?? "idle",
         updatedAt: bot.updatedAt.toISOString(),
+        visibility: bot.visibility as "private" | "workspace",
+        canManage: bot.userId === actor.userId,
       };
     });
   }
@@ -246,7 +255,7 @@ export function createRepos(prisma: PrismaClient) {
       const bots = await prisma.bot.findMany({
         where: {
           spaceId: actor.spaceId,
-          userId: actor.userId,
+          OR: [{ userId: actor.userId }, { visibility: "workspace" }],
           archivedAt: options.archived ? { not: null } : null,
         },
         include: {
@@ -313,7 +322,7 @@ export function createRepos(prisma: PrismaClient) {
             });
             if (messages.length === 0) break;
           }
-          return mapBot(bot, preview, bot.runs[0]?.status ?? "idle");
+          return mapBot(bot, preview, bot.runs[0]?.status ?? "idle", actor.userId);
         }),
       );
     },
@@ -321,6 +330,20 @@ export function createRepos(prisma: PrismaClient) {
     listSpaceBotsForSpaces,
 
     async getBot(actor: Actor, botId: string, options: { includeArchived?: boolean } = {}) {
+      const bot = await prisma.bot.findFirst({
+        where: {
+          id: botId,
+          spaceId: actor.spaceId,
+          OR: [{ userId: actor.userId }, { visibility: "workspace" }],
+          ...(options.includeArchived ? {} : { archivedAt: null }),
+        },
+        include: { thread: true, computer: true },
+      });
+      if (!bot) throw new IsolationError();
+      return bot;
+    },
+
+    async getOwnedBot(actor: Actor, botId: string, options: { includeArchived?: boolean } = {}) {
       const bot = await prisma.bot.findFirst({
         where: {
           id: botId,
@@ -349,6 +372,7 @@ export function createRepos(prisma: PrismaClient) {
         modelProvider?: string | null;
         modelId?: string | null;
         thinkingLevel?: string | null;
+        visibility?: "private" | "workspace";
         initialMessage?: {
           role: "user" | "bot" | "system";
           blocks: MessageBlock[];
@@ -418,6 +442,7 @@ export function createRepos(prisma: PrismaClient) {
               modelProvider,
               modelId,
               thinkingLevel,
+              visibility: input.visibility ?? "private",
             },
           });
           const thread = await tx.thread.create({
@@ -505,7 +530,7 @@ export function createRepos(prisma: PrismaClient) {
           }
         }
       }
-      return mapBot(bot);
+      return mapBot(bot, "", "idle", actor.userId);
     },
 
     async reorderBots(actor: Actor, botIds: string[]): Promise<void> {
@@ -547,7 +572,7 @@ export function createRepos(prisma: PrismaClient) {
         data: { computerId: computer.id },
         include: { thread: true, computer: true },
       });
-      return mapBot(updated);
+      return mapBot(updated, "", "idle", actor.userId);
     },
   };
 }

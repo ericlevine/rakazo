@@ -3,6 +3,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   AgentSkillCatalogEntry,
   Bot,
+  BotVisibility,
   ComputerMode,
   Me,
   ModelCatalogEntry,
@@ -39,6 +40,37 @@ const KnowledgeSection = lazy(() =>
 );
 
 const fieldLabelClass = "mt-4 block text-[14px] text-muted-foreground";
+
+function VisibilityPicker({
+  value,
+  onChange,
+}: {
+  value: BotVisibility;
+  onChange: (value: BotVisibility) => void;
+}) {
+  return (
+    <div className="mt-4">
+      <div className="text-[14px] text-muted-foreground">
+        <Trans>Access</Trans>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        {(["private", "workspace"] as const).map((visibility) => (
+          <Toggle
+            key={visibility}
+            variant="outline"
+            pressed={value === visibility}
+            onPressedChange={(pressed) => {
+              if (pressed) onChange(visibility);
+            }}
+            className="capitalize aria-pressed:border-foreground/40 aria-pressed:text-foreground"
+          >
+            {visibility === "private" ? <Trans>Private</Trans> : <Trans>Workspace</Trans>}
+          </Toggle>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function ComputerModePicker({
   value,
@@ -85,6 +117,7 @@ export function CreateBotForm({
     title: string;
     description: string;
     computerMode: ComputerMode;
+    visibility: BotVisibility;
   }) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -94,6 +127,7 @@ export function CreateBotForm({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [computerMode, setComputerMode] = useState<ComputerMode>("team");
+  const [visibility, setVisibility] = useState<BotVisibility>("private");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,6 +141,7 @@ export function CreateBotForm({
         title: title.trim(),
         description: description.trim(),
         computerMode,
+        visibility,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : t`Could not create bot`);
@@ -176,6 +211,7 @@ export function CreateBotForm({
           privateTestId="create-bot-private"
         />
       </div>
+      <VisibilityPicker value={visibility} onChange={setVisibility} />
       <Button
         className="mt-5"
         disabled={!name.trim() || submitting}
@@ -206,6 +242,7 @@ export function BotSettings({
     color?: string;
     computerMode: ComputerMode;
     memoryScope?: "isolated" | "shared" | null;
+    visibility?: BotVisibility;
     autoSpeak?: boolean;
     voiceId?: string | null;
     modelProvider?: string | null;
@@ -224,6 +261,7 @@ export function BotSettings({
   const [color, setColor] = useState(bot.color);
   const [computerMode, setComputerMode] = useState(bot.computerMode);
   const [memoryScope, setMemoryScope] = useState(bot.memoryScope);
+  const [visibility, setVisibility] = useState(bot.visibility);
   const [autoSpeak, setAutoSpeak] = useState(bot.autoSpeak);
   const [voiceId, setVoiceId] = useState(bot.voiceId ?? "");
   const [voices, setVoices] = useState<VoiceInfo[]>([]);
@@ -386,6 +424,7 @@ export function BotSettings({
           </span>
         </summary>
         <ComputerModePicker value={computerMode} onChange={setComputerMode} />
+        <VisibilityPicker value={visibility} onChange={setVisibility} />
         <Suspense fallback={null}>
           <ScratchpadSection botId={bot.id} />
           {advancedOpened ? (
@@ -518,6 +557,7 @@ export function BotSettings({
               color,
               computerMode,
               memoryScope,
+              visibility,
               autoSpeak,
               voiceId: voiceId || null,
               modelProvider: selected?.provider ?? null,

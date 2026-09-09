@@ -932,6 +932,38 @@ describeWithDatabase("API authorization and resource isolation", () => {
       botInput("Owner shared bot"),
       shared.id,
     );
+    expect(
+      (await rpc<Bot[]>(app, memberCookie, "bots/list", {}, shared.id)).map((bot) => bot.id),
+    ).not.toContain(ownerBot.id);
+    const workspaceBot = await rpc<Bot>(
+      app,
+      cookie,
+      "bots/update",
+      { botId: ownerBot.id, visibility: "workspace" },
+      shared.id,
+    );
+    expect(workspaceBot).toMatchObject({ visibility: "workspace", canManage: true });
+    await expect(rpc<Bot[]>(app, memberCookie, "bots/list", {}, shared.id)).resolves.toEqual([
+      expect.objectContaining({ id: ownerBot.id, visibility: "workspace", canManage: false }),
+    ]);
+    await expect(
+      rpc(app, memberCookie, "threads/get", { botId: ownerBot.id }, shared.id),
+    ).resolves.toMatchObject({ botId: ownerBot.id, messages: [] });
+    await expect(
+      rpc<{ runId: string }>(
+        app,
+        memberCookie,
+        "threads/send",
+        { botId: ownerBot.id, text: "Shared hello" },
+        shared.id,
+      ),
+    ).resolves.toMatchObject({ runId: expect.any(String) });
+    await expect(
+      raw(app, memberCookie, "bots/update", { botId: ownerBot.id, name: "Not allowed" }, shared.id),
+    ).resolves.toMatchObject({ status: 404 });
+    await expect(
+      raw(app, memberCookie, "threads/clear", { botId: ownerBot.id }, shared.id),
+    ).resolves.toMatchObject({ status: 404 });
     const ownerNavigation = await rpc<SpaceNavigation>(app, cookie, "spaces/list", {}, shared.id);
     expect(ownerNavigation.spaces).toEqual(
       expect.arrayContaining([

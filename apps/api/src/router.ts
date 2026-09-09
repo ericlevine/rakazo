@@ -136,7 +136,7 @@ import {
 import { getLogger } from "@rakazo/logging";
 import { deleteAgentSecret, listAgentSecrets, putAgentSecret } from "./agent-secrets.js";
 import { createAgentSkillsService } from "./agent-skills.js";
-import { createOwnedArtifact, getOwnedArtifact, getSpaceArtifact } from "./artifacts.js";
+import { createOwnedArtifact, getBotArtifact, getSpaceArtifact } from "./artifacts.js";
 import { botProfileLabelsChanged, commitBotUpdate } from "./bot-update.js";
 import {
   executionBlocksUserTakeover,
@@ -955,7 +955,7 @@ export function createRouter(deps: RouterDeps) {
         return { ok: true as const };
       }),
       update: authed.bots.update.handler(async ({ context, input }) => {
-        const existing = await repos.getBot(context.actor, input.botId);
+        const existing = await getOwnedBotOrNotFound(repos, context.actor, input.botId);
         if (input.sectionId) {
           const section = await deps.prisma.botSection.findFirst({
             where: {
@@ -1046,6 +1046,7 @@ export function createRouter(deps: RouterDeps) {
             color: input.color,
             pinned: input.pinned,
             memoryScope: input.memoryScope,
+            visibility: input.visibility,
             sectionId: input.sectionId,
             voiceId: input.voiceId,
             autoSpeak: input.autoSpeak,
@@ -1065,7 +1066,7 @@ export function createRouter(deps: RouterDeps) {
         return bot;
       }),
       setComputer: authed.bots.setComputer.handler(async ({ context, input }) => {
-        const bot = await repos.getBot(context.actor, input.botId);
+        const bot = await getOwnedBotOrNotFound(repos, context.actor, input.botId);
         if (!bot.computer) throw new IsolationError();
         const currentMode = bot.computer.scope === "dedicated" ? "dedicated" : "team";
         if (currentMode === input.mode) {
@@ -1124,7 +1125,7 @@ export function createRouter(deps: RouterDeps) {
         }
       }),
       archive: authed.bots.archive.handler(async ({ context, input }) => {
-        const bot = await repos.getBot(context.actor, input.botId, { includeArchived: true });
+        const bot = await getOwnedBotOrNotFound(repos, context.actor, input.botId, true);
         await archiveBot(
           {
             prisma: deps.prisma,
@@ -1140,13 +1141,13 @@ export function createRouter(deps: RouterDeps) {
         return { ok: true as const };
       }),
       restore: authed.bots.restore.handler(async ({ context, input }) => {
-        const bot = await repos.getBot(context.actor, input.botId, { includeArchived: true });
+        const bot = await getOwnedBotOrNotFound(repos, context.actor, input.botId, true);
         if (!bot.archivedAt) return { ok: true as const };
         await deps.prisma.bot.update({ where: { id: bot.id }, data: { archivedAt: null } });
         return { ok: true as const };
       }),
       remove: authed.bots.remove.handler(async ({ context, input }) => {
-        const bot = await repos.getBot(context.actor, input.botId, { includeArchived: true });
+        const bot = await getOwnedBotOrNotFound(repos, context.actor, input.botId, true);
         await destroyBot(
           {
             prisma: deps.prisma,
@@ -1169,7 +1170,7 @@ export function createRouter(deps: RouterDeps) {
         return { ok: true as const };
       }),
       rotateWebhookSecret: authed.bots.rotateWebhookSecret.handler(async ({ context, input }) => {
-        const bot = await repos.getBot(context.actor, input.botId);
+        const bot = await getOwnedBotOrNotFound(repos, context.actor, input.botId);
         const plaintext = randomBytes(32).toString("base64url");
         const stored = await deps.secrets.put(plaintext, {
           operationId: "bots.rotateWebhookSecret",
@@ -1398,6 +1399,9 @@ export function createRouter(deps: RouterDeps) {
       }),
       clear: authed.threads.clear.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
+        if (target.kind === "bot") {
+          await getOwnedBotOrNotFound(repos, context.actor, target.botId);
+        }
         const contextBotId = target.kind === "bot" ? target.botId : target.memberBotIds[0];
         if (!contextBotId) throw new IsolationError();
         const { cancelledRunIds, historyCompactionGeneration } = await deps.events.clearThread({
@@ -4411,7 +4415,7 @@ export function createRouter(deps: RouterDeps) {
         }
         await repos.getBot(context.actor, input.botId!);
         try {
-          return await getOwnedArtifact(deps, context.actor, {
+          return await getBotArtifact(deps, context.actor, {
             botId: input.botId!,
             artifactId: input.artifactId,
           });
@@ -4454,7 +4458,7 @@ export function createRouter(deps: RouterDeps) {
     },
     export: {
       bot: authed.export.bot.handler(async ({ context, input }) => {
-        const bot = await repos.getBot(context.actor, input.botId);
+        const bot = await getOwnedBotOrNotFound(repos, context.actor, input.botId);
         if (!bot.thread || !bot.computer) throw new IsolationError();
         const homeKey = bot.computer.homeKey;
         const exportContext = {
@@ -4738,6 +4742,8 @@ async function spaceNavigationDto(
           preview: bot.preview,
           status: bot.status,
           updatedAt: bot.updatedAt,
+          visibility: bot.visibility,
+          canManage: bot.canManage,
         })),
         groups: spaceGroups.map((group) => ({
           id: group.id,
@@ -4831,6 +4837,20 @@ async function modelSetup(deps: RouterDeps, actor: Actor) {
     settings,
     needsModel: deps.env.agentRuntime !== "scripted" && !credential && !hasDeployment,
   };
+}
+
+async function getOwnedBotOrNotFound(
+  repos: ReturnType<typeof createRepos>,
+  actor: Actor,
+  botId: string,
+  includeArchived = false,
+) {
+  try {
+    return await repos.getOwnedBot(actor, botId, { includeArchived });
+  } catch (error) {
+    if (error instanceof IsolationError) throw new ORPCError("NOT_FOUND");
+    throw error;
+  }
 }
 
 async function computerStatus(

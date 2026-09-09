@@ -522,9 +522,9 @@ function Thread() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={!inGroup && botId ? t("Chat settings") : displayName || t("Thread")}
-          disabled={inGroup || !botId}
+          disabled={inGroup || !botId || !currentBot?.canManage}
           onPress={() => {
-            if (!botId || inGroup) return;
+            if (!botId || inGroup || !currentBot?.canManage) return;
             router.push({ pathname: "/bot-settings", params: { botId } });
           }}
           style={{
@@ -618,14 +618,18 @@ function Thread() {
   }
 
   const botActions = [
-    {
-      text: t("Chat settings"),
-      onPress: () =>
-        router.push({
-          pathname: "/bot-settings",
-          params: { botId: botId ?? "" },
-        }),
-    },
+    ...(currentBot?.canManage
+      ? [
+          {
+            text: t("Chat settings"),
+            onPress: () =>
+              router.push({
+                pathname: "/bot-settings",
+                params: { botId: botId ?? "" },
+              }),
+          },
+        ]
+      : []),
     {
       text: t("Open computer"),
       onPress: () =>
@@ -634,38 +638,43 @@ function Thread() {
           params: { botId: botId ?? "", name: displayName ?? t("Bot") },
         }),
     },
-    {
-      text: t("Clear conversation"),
-      destructive: true,
-      onPress: () =>
-        Alert.alert(
-          t("Clear conversation?"),
-          t(
-            "This removes every message and stops current work. The bot, computer, memory, and routines are kept.",
-          ),
-          [
-            { text: t("Cancel"), style: "cancel" },
-            { text: t("Clear"), style: "destructive", onPress: clearConversation },
-          ],
-        ),
-    },
-    {
-      text: t("Archive"),
-      onPress: () =>
-        void rpc("bots/archive", { botId })
-          .then(leaveBot)
-          .catch((error) =>
-            Alert.alert(
-              t("Could not archive bot"),
-              error instanceof Error ? error.message : t("Try again."),
-            ),
-          ),
-    },
-    {
-      text: t("Delete…"),
-      destructive: true,
-      onPress: () => confirmDeleteBot({ id: botId ?? "", name: displayName || t("Bot") }, leaveBot),
-    },
+    ...(currentBot?.canManage
+      ? [
+          {
+            text: t("Clear conversation"),
+            destructive: true,
+            onPress: () =>
+              Alert.alert(
+                t("Clear conversation?"),
+                t(
+                  "This removes every message and stops current work. The bot, computer, memory, and routines are kept.",
+                ),
+                [
+                  { text: t("Cancel"), style: "cancel" },
+                  { text: t("Clear"), style: "destructive", onPress: clearConversation },
+                ],
+              ),
+          },
+          {
+            text: t("Archive"),
+            onPress: () =>
+              void rpc("bots/archive", { botId })
+                .then(leaveBot)
+                .catch((error) =>
+                  Alert.alert(
+                    t("Could not archive bot"),
+                    error instanceof Error ? error.message : t("Try again."),
+                  ),
+                ),
+          },
+          {
+            text: t("Delete…"),
+            destructive: true,
+            onPress: () =>
+              confirmDeleteBot({ id: botId ?? "", name: displayName || t("Bot") }, leaveBot),
+          },
+        ]
+      : []),
   ];
 
   function showBotActions() {
