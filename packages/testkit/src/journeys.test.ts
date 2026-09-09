@@ -2099,25 +2099,26 @@ describeJourneys("required product journeys", () => {
       ]),
       thread: archiveThread,
     });
-    const groupsWhileUndersized = await rpc<Array<{ id: string }>>(app, ada, "groups/list");
-    expect(groupsWhileUndersized.some((row) => row.id === archiveGroup.id)).toBe(false);
+    const groupsWithOneMember = await rpc<Array<{ id: string }>>(app, ada, "groups/list");
+    expect(groupsWithOneMember.some((row) => row.id === archiveGroup.id)).toBe(true);
+    await rpc(app, ada, "bots/archive", { botId: archivePartner.id });
+    const groupsWhileEmpty = await rpc<Array<{ id: string }>>(app, ada, "groups/list");
+    expect(groupsWhileEmpty.some((row) => row.id === archiveGroup.id)).toBe(false);
     await expect(rpc(app, ada, "threads/get", { groupId: archiveGroup.id })).rejects.toThrow();
     await expect(
       rpc(app, ada, "threads/send", {
         groupId: archiveGroup.id,
-        text: "This hidden group must not run with one active member",
+        text: "This hidden group must not run without an active member",
       }),
     ).rejects.toThrow();
     await rpc(app, ada, "bots/restore", { botId: archiveMember.id });
     const restoredArchiveGroup = await rpc<
       Array<{ id: string; members: Array<{ botId: string }> }>
     >(app, ada, "groups/list");
-    expect(restoredArchiveGroup.find((row) => row.id === archiveGroup.id)?.members).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ botId: archiveMember.id }),
-        expect.objectContaining({ botId: archivePartner.id }),
-      ]),
-    );
+    expect(restoredArchiveGroup.find((row) => row.id === archiveGroup.id)?.members).toEqual([
+      expect.objectContaining({ botId: archiveMember.id }),
+    ]);
+    await rpc(app, ada, "bots/restore", { botId: archivePartner.id });
     const archiveThird = await rpc<Bot>(app, ada, "bots/create", {
       name: "Archive Third",
       title: "",
@@ -2130,6 +2131,7 @@ describeJourneys("required product journeys", () => {
       botIds: [archiveMember.id, archivePartner.id, archiveThird.id],
     });
     await rpc(app, ada, "bots/archive", { botId: archiveMember.id });
+    await rpc(app, ada, "bots/archive", { botId: archivePartner.id });
     const dissolvingTask = await prisma.task.create({
       data: {
         spaceId: archivePartner.spaceId,
@@ -2155,6 +2157,7 @@ describeJourneys("required product journeys", () => {
     expect(await prisma.chatGroup.findUnique({ where: { id: archiveGroup.id } })).toBeNull();
     expect(await prisma.run.findUnique({ where: { id: dissolvingRun.id } })).toBeNull();
     await rpc(app, ada, "bots/restore", { botId: archiveMember.id });
+    await rpc(app, ada, "bots/restore", { botId: archivePartner.id });
     expect(await prisma.chatGroup.findUnique({ where: { id: archiveGroup.id } })).toBeNull();
 
     const deletionPartner = await rpc<Bot>(app, ada, "bots/create", {
@@ -2170,8 +2173,10 @@ describeJourneys("required product journeys", () => {
     });
     await expect(prisma.bot.delete({ where: { id: botB.id } })).rejects.toThrow();
     expect(await prisma.chatGroup.findUnique({ where: { id: deletionGroup.id } })).not.toBeNull();
+    await rpc(app, ada, "bots/archive", { botId: deletionPartner.id });
     await rpc(app, ada, "bots/remove", { botId: botB.id, deleteMemories: true });
     expect(await prisma.chatGroup.findUnique({ where: { id: deletionGroup.id } })).toBeNull();
+    await rpc(app, ada, "bots/restore", { botId: deletionPartner.id });
 
     await rpc(app, ada, "groups/remove", { groupId: group.id });
     expect(await prisma.artifact.findUnique({ where: { id: artifact.id } })).toBeNull();

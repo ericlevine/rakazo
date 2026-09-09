@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { ComposioEmulator } from "@rakazo/adapters";
-import type { appContract, Space, SpaceNavigation, ThreadMessage } from "@rakazo/contracts";
+import type { appContract, Group, Space, SpaceNavigation, ThreadMessage } from "@rakazo/contracts";
 import {
   claimEmptySpaceDeletionForMember,
   deleteEmptySpaceForMember,
@@ -946,6 +946,48 @@ describeWithDatabase("API authorization and resource isolation", () => {
     await expect(rpc<Bot[]>(app, memberCookie, "bots/list", {}, shared.id)).resolves.toEqual([
       expect.objectContaining({ id: ownerBot.id, visibility: "workspace", canManage: false }),
     ]);
+    const privateGroup = await rpc<Group>(
+      app,
+      cookie,
+      "groups/create",
+      { name: "Private topic", botIds: [ownerBot.id], visibility: "private" },
+      shared.id,
+    );
+    const workspaceGroup = await rpc<Group>(
+      app,
+      cookie,
+      "groups/create",
+      { name: "Workspace topic", botIds: [ownerBot.id], visibility: "workspace" },
+      shared.id,
+    );
+    expect(workspaceGroup).toMatchObject({ visibility: "workspace", canManage: true });
+    const memberGroups = await rpc<Group[]>(app, memberCookie, "groups/list", {}, shared.id);
+    expect(memberGroups).toEqual([
+      expect.objectContaining({
+        id: workspaceGroup.id,
+        visibility: "workspace",
+        canManage: false,
+      }),
+    ]);
+    expect(memberGroups.map((group) => group.id)).not.toContain(privateGroup.id);
+    await expect(
+      rpc<{ runId: string }>(
+        app,
+        memberCookie,
+        "threads/send",
+        { groupId: workspaceGroup.id, text: "Shared topic hello" },
+        shared.id,
+      ),
+    ).resolves.toMatchObject({ runId: expect.any(String) });
+    await expect(
+      raw(
+        app,
+        memberCookie,
+        "groups/update",
+        { groupId: workspaceGroup.id, name: "Not allowed" },
+        shared.id,
+      ),
+    ).resolves.toMatchObject({ status: 404 });
     await expect(
       rpc(app, memberCookie, "threads/get", { botId: ownerBot.id }, shared.id),
     ).resolves.toMatchObject({ botId: ownerBot.id, messages: [] });
@@ -993,6 +1035,8 @@ describeWithDatabase("API authorization and resource isolation", () => {
       ]),
     );
 
+    await rpc(app, cookie, "groups/remove", { groupId: privateGroup.id }, shared.id);
+    await rpc(app, cookie, "groups/remove", { groupId: workspaceGroup.id }, shared.id);
     await rpc(app, cookie, "bots/remove", { botId: ownerBot.id, deleteMemories: true }, shared.id);
     expect(
       (await rpc<SpaceNavigation>(app, cookie, "spaces/list", {}, shared.id)).spaces.find(

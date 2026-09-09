@@ -24,7 +24,7 @@ import {
   createThreadMessageInTransaction,
   expireComputerExecutionLeases,
   IsolationError,
-  lockOwnedGroup,
+  lockAccessibleGroup,
   type Prisma,
   type PrismaClient,
   type ThreadEvents,
@@ -237,24 +237,41 @@ async function lockAndLoadGroupMembers(
   actor: Actor,
   target: Extract<ThreadTarget, { kind: "group" }>,
 ) {
-  await lockOwnedGroup(tx, actor, target.groupId);
+  await lockAccessibleGroup(tx, actor, target.groupId);
   const group = await tx.chatGroup.findFirst({
     where: {
       id: target.groupId,
       spaceId: actor.spaceId,
-      userId: actor.userId,
+      OR: [{ userId: actor.userId }, { visibility: "workspace" }],
       archivedAt: null,
       thread: { id: target.threadId },
     },
     include: {
       members: {
         where: { bot: { archivedAt: null } },
-        include: { bot: { select: { id: true, name: true, color: true } } },
+        include: {
+          bot: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+              userId: true,
+              visibility: true,
+            },
+          },
+        },
         orderBy: { createdAt: "asc" },
       },
     },
   });
-  if (!group || group.members.length < GROUP_MEMBER_MIN) throw new IsolationError();
+  if (
+    !group ||
+    group.members.length < GROUP_MEMBER_MIN ||
+    group.members.some(
+      (member) => member.bot.userId !== actor.userId && member.bot.visibility !== "workspace",
+    )
+  )
+    throw new IsolationError();
   return group.members.map((member) => ({
     botId: member.bot.id,
     name: member.bot.name,

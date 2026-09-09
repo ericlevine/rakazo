@@ -416,6 +416,7 @@ model ChatGroup {
   space      Space             @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   userId     String
   name       String
+  visibility String            @default("private")
   pinned     Boolean           @default(false)
   sectionId  String?
   section    BotSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
@@ -427,6 +428,7 @@ model ChatGroup {
   artifacts  Artifact[]
 
   @@index([spaceId, userId, archivedAt, pinned, updatedAt])
+  @@index([spaceId, visibility, archivedAt, pinned, updatedAt])
   @@index([sectionId])
   @@map("chat_groups")
 }

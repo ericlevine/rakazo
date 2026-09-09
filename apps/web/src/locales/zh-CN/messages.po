@@ -2326,6 +2326,10 @@ msgstr "新密码"
 msgid "New section"
 msgstr "新建分组"
 
+#: src/pages/BotContextMenu.tsx:133
+msgid "New thread"
+msgstr "新建对话"
+
 #: src/pages/KnowledgeSection.tsx:469
 msgid "New skill"
 msgstr "新建技能"

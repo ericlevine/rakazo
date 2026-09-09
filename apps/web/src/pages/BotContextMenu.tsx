@@ -19,6 +19,7 @@ import {
   Eraser,
   Folder,
   FolderPlus,
+  MessageSquarePlus,
   Pencil,
   Pin,
   Trash2,
@@ -39,6 +40,7 @@ export function BotContextMenu({
   onMoveToSection,
   onCreateSection,
   onToggleUnread,
+  onNewThread,
   onEdit,
   onDuplicate,
   onClear,
@@ -53,6 +55,7 @@ export function BotContextMenu({
   onMoveToSection: (sectionId: string | null) => void;
   onCreateSection: () => void;
   onToggleUnread: () => void;
+  onNewThread?: () => void;
   onEdit: () => void;
   onDuplicate: () => void;
   onClear: () => void;
@@ -124,6 +127,12 @@ export function BotContextMenu({
           {bot.unread ? <BellDot /> : <Bell />}
           {bot.unread ? t`Mark as Read` : t`Mark as Unread`}
         </DropdownMenuItem>
+        {onNewThread ? (
+          <DropdownMenuItem onClick={onNewThread}>
+            <MessageSquarePlus />
+            {t`New thread`}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuSeparator />
         {canManage ? (
           <DropdownMenuItem onClick={onEdit}>

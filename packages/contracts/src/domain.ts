@@ -105,6 +105,8 @@ export const GroupSchema = z.object({
   id: Id,
   spaceId: Id,
   name: z.string(),
+  visibility: BotVisibilitySchema,
+  canManage: z.boolean(),
   pinned: z.boolean(),
   sectionId: Id.nullable(),
   archivedAt: z.string().nullable(),
@@ -126,6 +128,7 @@ const GroupBotIds = z
 export const CreateGroupInput = z.object({
   name: z.string().trim().min(1).max(80),
   botIds: GroupBotIds,
+  visibility: BotVisibilitySchema.default("private"),
 });
 export type CreateGroupInput = z.infer<typeof CreateGroupInput>;
 
@@ -135,6 +138,7 @@ export const UpdateGroupInput = z.object({
   botIds: GroupBotIds.optional(),
   pinned: z.boolean().optional(),
   sectionId: Id.nullable().optional(),
+  visibility: BotVisibilitySchema.optional(),
 });
 export type UpdateGroupInput = z.infer<typeof UpdateGroupInput>;
 
@@ -185,6 +189,8 @@ export const SpaceGroupSchema = GroupSchema.pick({
   preview: true,
   unread: true,
   updatedAt: true,
+  visibility: true,
+  canManage: true,
 });
 export type SpaceGroup = z.infer<typeof SpaceGroupSchema>;
 

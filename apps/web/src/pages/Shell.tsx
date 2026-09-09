@@ -1312,26 +1312,36 @@ export function ShellPage() {
       const visibleGroups = space.groups.filter((group) =>
         `${group.name} ${group.preview}`.toLowerCase().includes(needle),
       );
-      const sections = groupBotsForSidebar(
+      const chats = [
+        ...visibleBots.map((chat) => ({ kind: "bot" as const, chat })),
+        ...visibleGroups.map((chat) => ({ kind: "group" as const, chat })),
+      ].map((item) => ({ ...item, pinned: item.chat.pinned, sectionId: item.chat.sectionId }));
+      const sections = (
         [
-          ...visibleBots.map((chat) => ({ kind: "bot" as const, chat })),
-          ...visibleGroups.map((chat) => ({ kind: "group" as const, chat })),
-        ].map((item) => ({ ...item, pinned: item.chat.pinned, sectionId: item.chat.sectionId })),
-        space.botSections,
-      ).map((group, index) => ({
-        ...group,
-        key: showSpaceNames ? `space:${space.id}:${group.key}` : group.key,
-        title: showSpaceNames
-          ? group.title
-            ? `${space.name} · ${group.title}`
-            : space.name
-          : group.title,
-        showLock: showSpaceNames,
-        emptySpaceId: undefined as string | undefined,
-        spaceId: space.id,
-        spaceName: space.name,
-        canDeleteSpace: index === 0 && space.canDelete === true,
-      }));
+          { key: "workspace", title: t`Workspace`, visibility: "workspace" as const },
+          { key: "personal", title: t`Personal`, visibility: "private" as const },
+        ] as const
+      )
+        .flatMap((bucket) =>
+          groupBotsForSidebar(
+            chats.filter((item) => item.chat.visibility === bucket.visibility),
+            space.botSections,
+          ).map((group) => ({
+            ...group,
+            key: `${bucket.key}:${group.key}`,
+            title: group.title ? `${bucket.title} · ${group.title}` : bucket.title,
+          })),
+        )
+        .map((group, index) => ({
+          ...group,
+          key: showSpaceNames ? `space:${space.id}:${group.key}` : group.key,
+          title: showSpaceNames ? `${space.name} · ${group.title}` : group.title,
+          showLock: showSpaceNames,
+          emptySpaceId: undefined as string | undefined,
+          spaceId: space.id,
+          spaceName: space.name,
+          canDeleteSpace: index === 0 && space.canDelete === true,
+        }));
       if (sections.length > 0) return sections;
       // Keep empty spaces selectable; chat clicks are the only switch control.
       if (!showSpaceNames) return [];
@@ -1349,7 +1359,7 @@ export function ShellPage() {
         },
       ];
     });
-  }, [bootstrapMe, botSections, bots, groups, spaces, query]);
+  }, [bootstrapMe, botSections, bots, groups, spaces, query, t]);
 
   const openSpaceChat = useCallback(
     (spaceId: string, path: string) => {
@@ -2130,7 +2140,7 @@ export function ShellPage() {
     if (text && id) void speaker.speak(text, { botId: id, messageId: message.id });
   }, []);
 
-  async function createGroup(input: { name: string; botIds: string[] }) {
+  async function createGroup(input: { name: string; botIds: string[]; visibility: BotVisibility }) {
     const group = await rpc.groups.create(input);
     setGroups((current) =>
       current.some((item) => item.id === group.id) ? current : [group, ...current],
@@ -3046,6 +3056,7 @@ export function ShellPage() {
               type="button"
               data-testid="bot-settings-trigger"
               onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
+              disabled={inGroup ? !activeGroup?.canManage : !active?.canManage}
               className="app-no-drag flex min-w-0 items-center gap-3"
             >
               {inGroup ? (
@@ -3104,7 +3115,9 @@ export function ShellPage() {
             scrollRef={messageScroll}
             artifactTarget={transcriptArtifactTarget}
             messages={transcriptMessages}
-            showAuthors={active?.visibility === "workspace"}
+            showAuthors={
+              active?.visibility === "workspace" || activeGroup?.visibility === "workspace"
+            }
             olderCursor={activeSnapshot?.olderCursor ?? null}
             loadingOlder={loadingOlder}
             answerableAskMessageId={answerableAskMessageId}
@@ -3172,6 +3185,7 @@ export function ShellPage() {
             onSlashOpen={refreshAgentSkills}
             onSlashAction={(action) => {
               if (action === "chat-settings") {
+                if (inGroup && !activeGroup?.canManage) return;
                 setPanel(inGroup ? "group-settings" : "settings");
                 return;
               }
@@ -3341,7 +3355,7 @@ export function ShellPage() {
                 onCreate={(input) => createGroup(input)}
               />
             ) : null}
-            {panel === "group-settings" && activeGroup ? (
+            {panel === "group-settings" && activeGroup?.canManage ? (
               <GroupSettings
                 key={activeGroup.id}
                 group={activeGroup}
@@ -3576,6 +3590,18 @@ export function ShellPage() {
             position={botMenu.position}
             onClose={closeBotMenu}
             sections={botSections}
+            onNewThread={
+              contextBot
+                ? () => {
+                    setBotMenu(null);
+                    void createGroup({
+                      name: `${contextBot.name} thread`,
+                      botIds: [contextBot.id],
+                      visibility: contextBot.visibility,
+                    });
+                  }
+                : undefined
+            }
             onTogglePinned={() => {
               setBotMenu(null);
               const request = contextBot

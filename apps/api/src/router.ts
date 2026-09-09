@@ -1227,7 +1227,7 @@ export function createRouter(deps: RouterDeps) {
       get: authed.groups.get.handler(async ({ context, input }) => {
         const group = await groupRepos.getGroup(context.actor, input.groupId);
         return {
-          ...groupRepos.mapGroup(group),
+          ...groupRepos.mapGroup(group, context.actor),
           messages: (
             await loadMessagePage(
               deps.prisma,
@@ -1244,6 +1244,7 @@ export function createRouter(deps: RouterDeps) {
           return await groupRepos.createGroup(context.actor, {
             name: duplicateBotName(source.name),
             botIds: source.members.map((member) => member.bot.id),
+            visibility: source.visibility === "workspace" ? "workspace" : "private",
           });
         } catch (error) {
           throw mapSpaceLifecycleError(error);
@@ -1261,7 +1262,10 @@ export function createRouter(deps: RouterDeps) {
           });
           if (!section) throw new IsolationError();
         }
-        const updated = await groupRepos.updateGroup(context.actor, input);
+        const updated = await groupRepos.updateGroup(context.actor, input).catch((error) => {
+          if (error instanceof IsolationError) throw new ORPCError("NOT_FOUND");
+          throw error;
+        });
         await Promise.all(
           updated.cancelledRunIds.map((runId) =>
             deps.jobs.cancel(runJobKey(runId)).catch(() => undefined),
@@ -4755,6 +4759,8 @@ async function spaceNavigationDto(
           id: group.id,
           spaceId: group.spaceId,
           name: group.name,
+          visibility: group.visibility,
+          canManage: group.canManage,
           pinned: group.pinned,
           sectionId: group.sectionId,
           members: group.members,

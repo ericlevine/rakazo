@@ -18,6 +18,7 @@ type GroupRecord = {
   spaceId: string;
   userId: string;
   name: string;
+  visibility: string;
   pinned: boolean;
   sectionId: string | null;
   archivedAt: Date | null;
@@ -44,6 +45,8 @@ type SpaceGroupRecord = Pick<
   GroupRecord,
   "id" | "spaceId" | "name" | "pinned" | "sectionId" | "updatedAt" | "members"
 > & {
+  userId: string;
+  visibility: string;
   thread: {
     unread: boolean;
     messages: Array<{ blocks: unknown }>;
@@ -59,13 +62,15 @@ function mapGroupMembers(members: GroupRecord["members"]): GroupMember[] {
   }));
 }
 
-function mapGroup(group: GroupRecord): Group {
+function mapGroup(group: GroupRecord, actor: Actor): Group {
   if (!group.thread) throw new IsolationError("Group is missing its thread");
   const preview = previewFromBlocks(group.thread.messages[0]?.blocks);
   return {
     id: group.id,
     spaceId: group.spaceId,
     name: group.name,
+    visibility: group.visibility === "workspace" ? "workspace" : "private",
+    canManage: group.userId === actor.userId,
     pinned: group.pinned,
     sectionId: group.sectionId,
     archivedAt: group.archivedAt?.toISOString() ?? null,
@@ -78,12 +83,14 @@ function mapGroup(group: GroupRecord): Group {
   };
 }
 
-function mapSpaceGroup(group: SpaceGroupRecord): SpaceGroup {
+function mapSpaceGroup(group: SpaceGroupRecord, actor: Actor): SpaceGroup {
   if (!group.thread) throw new IsolationError("Group is missing its thread");
   return {
     id: group.id,
     spaceId: group.spaceId,
     name: group.name,
+    visibility: group.visibility === "workspace" ? "workspace" : "private",
+    canManage: group.userId === actor.userId,
     pinned: group.pinned,
     sectionId: group.sectionId,
     members: mapGroupMembers(group.members),
@@ -107,7 +114,7 @@ async function assertAccessibleBots(
   prisma: PrismaClient,
   actor: Actor,
   botIds: string[],
-): Promise<GroupMember[]> {
+): Promise<Array<GroupMember & { visibility: string }>> {
   const unique = [...new Set(botIds)];
   if (unique.length < GROUP_MEMBER_MIN || unique.length > GROUP_MEMBER_MAX) {
     throw new IsolationError(
@@ -121,14 +128,14 @@ async function assertAccessibleBots(
       OR: [{ userId: actor.userId }, { visibility: "workspace" }],
       archivedAt: null,
     },
-    select: { id: true, name: true, color: true },
+    select: { id: true, name: true, color: true, visibility: true },
   });
   if (bots.length !== unique.length) throw new IsolationError();
   const botsById = new Map(bots.map((bot) => [bot.id, bot]));
   return unique.map((botId) => {
     const bot = botsById.get(botId);
     if (!bot) throw new IsolationError();
-    return { botId: bot.id, name: bot.name, color: bot.color };
+    return { botId: bot.id, name: bot.name, color: bot.color, visibility: bot.visibility };
   });
 }
 
@@ -182,13 +189,15 @@ export function createGroupRepos(prisma: PrismaClient) {
     const groups = await prisma.chatGroup.findMany({
       where: {
         spaceId: { in: spaceIds },
-        userId: actor.userId,
+        OR: [{ userId: actor.userId }, { visibility: "workspace" }],
         archivedAt: null,
       },
       select: {
         id: true,
         spaceId: true,
         name: true,
+        userId: true,
+        visibility: true,
         pinned: true,
         sectionId: true,
         updatedAt: true,
@@ -212,7 +221,7 @@ export function createGroupRepos(prisma: PrismaClient) {
           hasMinimumActiveMembers(group.members) &&
           hasAccessibleMembers(group.members as GroupRecord["members"], actor),
       )
-      .map((group) => mapSpaceGroup(group));
+      .map((group) => mapSpaceGroup(group, actor));
   }
 
   return {
@@ -220,7 +229,9 @@ export function createGroupRepos(prisma: PrismaClient) {
       const groups = await prisma.chatGroup.findMany({
         where: {
           spaceId: actor.spaceId,
-          userId: actor.userId,
+          ...(options.archived
+            ? { userId: actor.userId }
+            : { OR: [{ userId: actor.userId }, { visibility: "workspace" }] }),
           archivedAt: options.archived ? { not: null } : null,
         },
         include: groupInclude,
@@ -232,7 +243,7 @@ export function createGroupRepos(prisma: PrismaClient) {
             hasMinimumActiveMembers(group.members) &&
             hasAccessibleMembers(group.members as GroupRecord["members"], actor),
         )
-        .map((group) => mapGroup(group as GroupRecord));
+        .map((group) => mapGroup(group as GroupRecord, actor));
     },
 
     listSpaceGroupsForSpaces,
@@ -242,8 +253,12 @@ export function createGroupRepos(prisma: PrismaClient) {
         where: {
           id: groupId,
           spaceId: actor.spaceId,
-          userId: actor.userId,
-          ...(options.includeArchived ? {} : { archivedAt: null }),
+          ...(options.includeArchived
+            ? { userId: actor.userId }
+            : {
+                OR: [{ userId: actor.userId }, { visibility: "workspace" }],
+                archivedAt: null,
+              }),
         },
         include: groupInclude,
       });
@@ -261,7 +276,7 @@ export function createGroupRepos(prisma: PrismaClient) {
         where: {
           id: groupId,
           spaceId: actor.spaceId,
-          userId: actor.userId,
+          OR: [{ userId: actor.userId }, { visibility: "workspace" }],
           archivedAt: null,
         },
         include: groupTargetInclude,
@@ -275,8 +290,17 @@ export function createGroupRepos(prisma: PrismaClient) {
       return group;
     },
 
-    async createGroup(actor: Actor, input: { name: string; botIds: string[] }): Promise<Group> {
+    async createGroup(
+      actor: Actor,
+      input: { name: string; botIds: string[]; visibility: "private" | "workspace" },
+    ): Promise<Group> {
       const members = await assertAccessibleBots(prisma, actor, input.botIds);
+      if (
+        input.visibility === "workspace" &&
+        members.some((member) => member.visibility !== "workspace")
+      ) {
+        throw new IsolationError("Workspace groups require workspace agents");
+      }
       const created = await prisma.$transaction(async (tx) => {
         await lockSpaceForContentCreation(tx, {
           spaceId: actor.spaceId,
@@ -287,6 +311,7 @@ export function createGroupRepos(prisma: PrismaClient) {
             spaceId: actor.spaceId,
             userId: actor.userId,
             name: input.name.trim(),
+            visibility: input.visibility,
           },
         });
         await tx.chatGroupMember.createMany({
@@ -304,7 +329,7 @@ export function createGroupRepos(prisma: PrismaClient) {
           include: groupInclude,
         });
       });
-      return mapGroup(created as GroupRecord);
+      return mapGroup(created as GroupRecord, actor);
     },
 
     async updateGroup(
@@ -315,6 +340,7 @@ export function createGroupRepos(prisma: PrismaClient) {
         botIds?: string[];
         pinned?: boolean;
         sectionId?: string | null;
+        visibility?: "private" | "workspace";
       },
     ): Promise<{ group: Group; cancelledRunIds: string[] }> {
       const members = input.botIds
@@ -330,7 +356,12 @@ export function createGroupRepos(prisma: PrismaClient) {
             archivedAt: null,
           },
           include: {
-            members: { select: { botId: true, bot: { select: { archivedAt: true } } } },
+            members: {
+              select: {
+                botId: true,
+                bot: { select: { archivedAt: true, visibility: true } },
+              },
+            },
             thread: { select: { id: true } },
           },
         });
@@ -342,6 +373,15 @@ export function createGroupRepos(prisma: PrismaClient) {
           )
         ) {
           throw new IsolationError();
+        }
+        const nextVisibility = input.visibility ?? current.visibility;
+        const nextMembers =
+          members ?? current.members.map((member) => ({ visibility: member.bot.visibility }));
+        if (
+          nextVisibility === "workspace" &&
+          nextMembers.some((member) => member.visibility !== "workspace")
+        ) {
+          throw new IsolationError("Workspace groups require workspace agents");
         }
         const nextBotIds = new Set(
           members?.map((member) => member.botId) ?? current.members.map((member) => member.botId),
@@ -383,6 +423,7 @@ export function createGroupRepos(prisma: PrismaClient) {
             updatedAt: new Date(),
             pinned: input.pinned,
             sectionId: input.sectionId,
+            visibility: input.visibility,
           },
         });
         return tx.chatGroup
@@ -394,7 +435,7 @@ export function createGroupRepos(prisma: PrismaClient) {
       });
       if (!updated.group.thread) throw new IsolationError();
       return {
-        group: mapGroup(updated.group as GroupRecord),
+        group: mapGroup(updated.group as GroupRecord, actor),
         cancelledRunIds: updated.cancelledRunIds,
       };
     },
@@ -515,6 +556,23 @@ export async function lockOwnedGroup(
     WHERE id = ${groupId}
       AND "spaceId" = ${actor.spaceId}
       AND "userId" = ${actor.userId}
+    FOR UPDATE
+  `;
+  if (locked.length !== 1) throw new IsolationError();
+}
+
+export async function lockAccessibleGroup(
+  prisma: Pick<Prisma.TransactionClient, "$queryRaw">,
+  actor: Pick<Actor, "spaceId" | "userId">,
+  groupId: string,
+) {
+  const locked = await prisma.$queryRaw<Array<{ id: string }>>`
+    SELECT id
+    FROM chat_groups
+    WHERE id = ${groupId}
+      AND "spaceId" = ${actor.spaceId}
+      AND ("userId" = ${actor.userId} OR visibility = 'workspace')
+      AND "archivedAt" IS NULL
     FOR UPDATE
   `;
   if (locked.length !== 1) throw new IsolationError();

@@ -621,7 +621,7 @@ export default function Home() {
                 );
               }}
               onLongPress={
-                item.group.spaceId === me?.spaceId
+                item.group.spaceId === me?.spaceId && item.group.canManage
                   ? () => setOrganizeTarget({ kind: "group", id: item.group.id })
                   : undefined
               }
@@ -639,7 +639,7 @@ export default function Home() {
                 );
               }}
               onLongPress={
-                item.bot.spaceId === me?.spaceId
+                item.bot.spaceId === me?.spaceId && item.bot.canManage
                   ? () => setOrganizeTarget({ kind: "bot", id: item.bot.id })
                   : undefined
               }

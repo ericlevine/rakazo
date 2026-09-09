@@ -295,6 +295,7 @@ function Thread() {
   const [agentSkills, setAgentSkills] = useState<AgentSkillCatalogEntry[]>([]);
   const [mentionBots, setMentionBots] = useState<MobileBot[]>([]);
   const [mentionGroups, setMentionGroups] = useState<MobileGroup[]>([]);
+  const currentGroup = groupId ? mentionGroups.find((group) => group.id === groupId) : undefined;
   const [mentionRoutines, setMentionRoutines] = useState<Array<Routine & { botName?: string }>>([]);
   const [mentionConnectors, setMentionConnectors] = useState<
     Array<{
@@ -555,6 +556,7 @@ function Thread() {
         inGroup ? (
           <Pressable
             accessibilityLabel={t("Group settings")}
+            disabled={!currentGroup?.canManage}
             hitSlop={8}
             onPress={() =>
               router.push({
@@ -585,6 +587,7 @@ function Thread() {
     botId,
     currentBot,
     currentBotStatus,
+    currentGroup,
     displayName,
     groupId,
     inGroup,
@@ -630,6 +633,29 @@ function Thread() {
           },
         ]
       : []),
+    {
+      text: t("New thread"),
+      onPress: () => {
+        if (!botId || !currentBot) return;
+        void rpc<{ id: string; name: string }>("groups/create", {
+          name: `${currentBot.name} thread`,
+          botIds: [botId],
+          visibility: currentBot.visibility,
+        })
+          .then((group) =>
+            router.push({
+              pathname: "/group-thread",
+              params: { groupId: group.id, name: group.name },
+            }),
+          )
+          .catch((error) =>
+            Alert.alert(
+              t("Could not create thread"),
+              error instanceof Error ? error.message : t("Try again."),
+            ),
+          );
+      },
+    },
     {
       text: t("Open computer"),
       onPress: () =>

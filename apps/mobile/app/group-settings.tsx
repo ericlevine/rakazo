@@ -1,4 +1,4 @@
-import { GROUP_MEMBER_MAX, GROUP_MEMBER_MIN } from "@rakazo/contracts";
+import { type BotVisibility, GROUP_MEMBER_MAX, GROUP_MEMBER_MIN } from "@rakazo/contracts";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, TextInput } from "react-native";
@@ -16,6 +16,7 @@ export default function GroupSettingsScreen() {
   const [bots, setBots] = useState<MobileBot[]>([]);
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [visibility, setVisibility] = useState<BotVisibility>("private");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -32,6 +33,7 @@ export default function GroupSettingsScreen() {
         setGroup(nextGroup);
         setName(nextGroup.name);
         setSelected(nextGroup.members.map((member) => member.botId));
+        setVisibility(nextGroup.visibility);
         setBots(nextBots.filter((bot) => !bot.archivedAt));
       })
       .catch((err) => setError(err instanceof Error ? err.message : t("Could not load group")));
@@ -42,11 +44,17 @@ export default function GroupSettingsScreen() {
     setPending(true);
     setError(null);
     try {
-      const input: { groupId: string; name?: string; botIds?: string[] } = { groupId };
+      const input: {
+        groupId: string;
+        name?: string;
+        botIds?: string[];
+        visibility?: BotVisibility;
+      } = { groupId };
       if (name.trim() !== group.name) input.name = name.trim();
       const memberIds = group.members.map((member) => member.botId).join(",");
       if (selected.join(",") !== memberIds) input.botIds = selected;
-      if (input.name || input.botIds) await rpc("groups/update", input);
+      if (visibility !== group.visibility) input.visibility = visibility;
+      if (input.name || input.botIds || input.visibility) await rpc("groups/update", input);
       router.back();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("Could not save group"));
@@ -98,10 +106,42 @@ export default function GroupSettingsScreen() {
           }}
         />
         <Text style={{ color: tokens.mutedForeground, fontSize: 14, marginTop: 20 }}>
+          {t("Access")}
+        </Text>
+        <ScrollView horizontal contentContainerStyle={{ gap: 10, marginTop: 8 }}>
+          {(["private", "workspace"] as const).map((option) => (
+            <Pressable
+              key={option}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: visibility === option }}
+              onPress={() => {
+                setVisibility(option);
+                if (option === "workspace") {
+                  const workspaceIds = new Set(
+                    bots.filter((bot) => bot.visibility === "workspace").map((bot) => bot.id),
+                  );
+                  setSelected((current) => current.filter((id) => workspaceIds.has(id)));
+                }
+              }}
+              style={{
+                borderWidth: 1,
+                borderColor: visibility === option ? tokens.foreground : tokens.border,
+                borderRadius: 11,
+                paddingHorizontal: 18,
+                paddingVertical: 12,
+              }}
+            >
+              <Text style={{ color: tokens.foreground }}>
+                {option === "private" ? t("Private") : t("Workspace")}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+        <Text style={{ color: tokens.mutedForeground, fontSize: 14, marginTop: 20 }}>
           {t("Members")}
         </Text>
         <BotMemberPicker
-          bots={bots}
+          bots={bots.filter((bot) => visibility === "private" || bot.visibility === "workspace")}
           selected={selected}
           onChange={setSelected}
           disabled={pending}

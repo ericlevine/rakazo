@@ -1,8 +1,15 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { type Bot, GROUP_MEMBER_MAX, GROUP_MEMBER_MIN, type Group } from "@rakazo/contracts";
+import {
+  type Bot,
+  type BotVisibility,
+  GROUP_MEMBER_MAX,
+  GROUP_MEMBER_MIN,
+  type Group,
+} from "@rakazo/contracts";
 import { BotAvatar, Button, Input } from "@rakazo/ui-web";
 import { Check, X } from "lucide-react";
 import { useId, useMemo, useState } from "react";
+import { VisibilityPicker } from "./shell/bot-panel";
 
 function validSelection(name: string, selected: readonly string[]) {
   return (
@@ -23,13 +30,21 @@ function MemberPicker({
   selected,
   onChange,
   maxHeight,
+  visibility,
 }: {
   bots: Bot[];
   selected: string[];
   onChange: (selected: string[]) => void;
   maxHeight: "max-h-[240px]" | "max-h-[280px]";
+  visibility: BotVisibility;
 }) {
-  const selectable = useMemo(() => bots.filter((bot) => !bot.archivedAt), [bots]);
+  const selectable = useMemo(
+    () =>
+      bots.filter(
+        (bot) => !bot.archivedAt && (visibility === "private" || bot.visibility === "workspace"),
+      ),
+    [bots, visibility],
+  );
 
   function toggle(botId: string) {
     if (selected.includes(botId)) {
@@ -72,12 +87,13 @@ export function CreateGroupForm({
 }: {
   bots: Bot[];
   onCancel: () => void;
-  onCreate: (input: { name: string; botIds: string[] }) => Promise<void>;
+  onCreate: (input: { name: string; botIds: string[]; visibility: BotVisibility }) => Promise<void>;
 }) {
   const { t } = useLingui();
   const nameId = useId();
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [visibility, setVisibility] = useState<BotVisibility>("private");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,7 +102,7 @@ export function CreateGroupForm({
     setSubmitting(true);
     setError(null);
     try {
-      await onCreate({ name: name.trim(), botIds: selected });
+      await onCreate({ name: name.trim(), botIds: selected, visibility });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t`Could not create group`);
     } finally {
@@ -125,6 +141,18 @@ export function CreateGroupForm({
           className="mt-2"
         />
       </label>
+      <VisibilityPicker
+        value={visibility}
+        onChange={(next) => {
+          setVisibility(next);
+          if (next === "workspace") {
+            const workspaceIds = new Set(
+              bots.filter((bot) => bot.visibility === "workspace").map((bot) => bot.id),
+            );
+            setSelected((current) => current.filter((id) => workspaceIds.has(id)));
+          }
+        }}
+      />
       <div className="mt-5 text-sm text-muted-foreground">
         <Trans>
           Members (pick {GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})
@@ -135,6 +163,7 @@ export function CreateGroupForm({
         selected={selected}
         onChange={setSelected}
         maxHeight="max-h-[280px]"
+        visibility={visibility}
       />
       <Button
         className="mt-5 w-full"
@@ -155,13 +184,18 @@ export function GroupSettings({
 }: {
   group: Group;
   bots: Bot[];
-  onSave: (input: { name?: string; botIds?: string[] }) => Promise<void>;
+  onSave: (input: {
+    name?: string;
+    botIds?: string[];
+    visibility?: BotVisibility;
+  }) => Promise<void>;
   onRemove: () => Promise<void>;
 }) {
   const { t } = useLingui();
   const nameId = useId();
   const [name, setName] = useState(group.name);
   const [selected, setSelected] = useState(group.members.map((member) => member.botId));
+  const [visibility, setVisibility] = useState(group.visibility);
   const [pending, setPending] = useState<"save" | "remove" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -187,6 +221,7 @@ export function GroupSettings({
   function save() {
     return onSave({
       name: name.trim() !== group.name ? name.trim() : undefined,
+      visibility: visibility !== group.visibility ? visibility : undefined,
       botIds: sameMembers(
         selected,
         group.members.map((member) => member.botId),
@@ -217,6 +252,18 @@ export function GroupSettings({
           className="mt-2"
         />
       </label>
+      <VisibilityPicker
+        value={visibility}
+        onChange={(next) => {
+          setVisibility(next);
+          if (next === "workspace") {
+            const workspaceIds = new Set(
+              bots.filter((bot) => bot.visibility === "workspace").map((bot) => bot.id),
+            );
+            setSelected((current) => current.filter((id) => workspaceIds.has(id)));
+          }
+        }}
+      />
       <div className="mt-5 text-sm text-muted-foreground">
         <Trans>
           Members ({GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})
@@ -227,6 +274,7 @@ export function GroupSettings({
         selected={selected}
         onChange={setSelected}
         maxHeight="max-h-[240px]"
+        visibility={visibility}
       />
       <Button
         className="mt-5 w-full"

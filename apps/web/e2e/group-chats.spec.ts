@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import {
+  activeBotId,
   captureScreenshot,
   completeOnboarding,
   createNamedBot,
@@ -18,22 +19,27 @@ test("creates a topic group with one bot", async ({ page }) => {
   await completeOnboarding(page);
   await page.goto("/app");
   await page.waitForURL(/\/app\/[^/]+$/);
+  const chiefId = activeBotId(page);
+  await rpc(page, "bots/update", { botId: chiefId, visibility: "workspace" });
+  await page.reload();
 
   await openNewGroup(page);
   const panel = page.getByTestId("side-panel");
   await panel.locator("label:has-text('Name') input").fill("Marketing topic");
+  await panel.getByRole("button", { name: "Workspace", exact: true }).click();
   await panel.getByRole("button", { name: "Chief" }).click();
   await expect(panel.getByRole("button", { name: "Create group", exact: true })).toBeEnabled();
   await panel.getByRole("button", { name: "Create group", exact: true }).click();
   await page.waitForURL(/\/app\/g\/[^/]+$/);
   await expect(page.getByRole("combobox", { name: "Message Marketing topic" })).toBeVisible();
 
-  const groups = await rpc<Array<{ name: string; members: Array<{ botId: string }> }>>(
-    page,
-    "groups/list",
-    {},
-  );
-  expect(groups.find((group) => group.name === "Marketing topic")?.members).toHaveLength(1);
+  const groups = await rpc<
+    Array<{ name: string; visibility: string; members: Array<{ botId: string }> }>
+  >(page, "groups/list", {});
+  expect(groups.find((group) => group.name === "Marketing topic")).toMatchObject({
+    visibility: "workspace",
+    members: [{ botId: chiefId }],
+  });
 });
 
 test("create group from + and see two bots in one transcript", async ({ page }, testInfo) => {

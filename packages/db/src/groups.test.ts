@@ -9,7 +9,9 @@ describe("listSpaceGroupsForSpaces", () => {
       {
         id: "group-1",
         spaceId: "workspace-2",
+        userId: "user-1",
         name: "Support crew",
+        visibility: "private",
         pinned: true,
         sectionId: null,
         updatedAt: new Date("2026-08-20T00:00:00.000Z"),
@@ -54,6 +56,8 @@ describe("listSpaceGroupsForSpaces", () => {
         id: "group-1",
         spaceId: "workspace-2",
         name: "Support crew",
+        visibility: "private",
+        canManage: true,
         pinned: true,
         sectionId: null,
         members: [
@@ -66,7 +70,7 @@ describe("listSpaceGroupsForSpaces", () => {
       },
     ]);
     const query = findMany.mock.calls[0]![0];
-    expect(query.select).not.toHaveProperty("userId");
+    expect(query.select).toMatchObject({ userId: true, visibility: true });
     expect(query.select).not.toHaveProperty("archivedAt");
     expect(query.select).not.toHaveProperty("createdAt");
   });

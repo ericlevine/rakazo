@@ -2326,6 +2326,10 @@ msgstr "Новый пароль"
 msgid "New section"
 msgstr "Новый раздел"
 
+#: src/pages/BotContextMenu.tsx:133
+msgid "New thread"
+msgstr "Новая ветка"
+
 #: src/pages/KnowledgeSection.tsx:469
 msgid "New skill"
 msgstr "Новый навык"

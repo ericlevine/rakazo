@@ -2326,6 +2326,10 @@ msgstr "Nova senha"
 msgid "New section"
 msgstr "Nova seção"
 
+#: src/pages/BotContextMenu.tsx:133
+msgid "New thread"
+msgstr "Nova conversa"
+
 #: src/pages/KnowledgeSection.tsx:469
 msgid "New skill"
 msgstr "Nova habilidade"

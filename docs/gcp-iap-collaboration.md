@@ -20,6 +20,11 @@ and issues its ordinary session cookie.
   Agents are private by default; an owner can make an agent workspace-visible
   so other space members can use its shared conversation. Human messages store
   and display their authenticated author so collaborators can distinguish turns.
+  Groups have the same private/workspace visibility boundary. A workspace group
+  may contain only workspace agents; members can chat in its live thread while
+  only its creator can manage it. The roster separates Personal and Workspace
+  conversations, and an agent's New thread action creates a one-agent group
+  with the agent's visibility.
   Agent management,
   user memory, notification settings, and personal credentials remain
   user-scoped.

@@ -91,7 +91,11 @@ describe("spaceInboxItems", () => {
       ],
     });
     const headings = spaceInboxItems([work]).filter((item) => item.type === "heading");
-    expect(headings.map((item) => item.title)).toEqual(["Work", "Pinned", "Research"]);
+    expect(headings.map((item) => item.title)).toEqual([
+      "Work",
+      "Personal · Pinned",
+      "Personal · Research",
+    ]);
     expect(headings.filter((item) => item.space)).toEqual([
       { type: "heading", key: work.id, title: work.name, space: work },
     ]);
@@ -108,14 +112,17 @@ describe("spaceInboxItems", () => {
       unread: false,
       updatedAt: "2026-01-01T00:00:00.000Z",
       members: [],
+      visibility: "private" as const,
+      canManage: true,
     };
     const items = spaceInboxItems([space({ isDefault: true, bots: [bot], groups: [group] })]);
-    expect(items.map((item) => item.type)).toEqual(["bot", "group"]);
+    expect(items.map((item) => item.type)).toEqual(["heading", "bot", "group"]);
   });
 
   it("keeps empty spaces beside a populated space", () => {
     const personal = space({ id: "personal", isDefault: true, bots: [bot] });
     expect(spaceInboxItems([personal, space()]).map((item) => item.type)).toEqual([
+      "heading",
       "heading",
       "bot",
       "heading",

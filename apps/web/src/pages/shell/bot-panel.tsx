@@ -42,7 +42,7 @@ const KnowledgeSection = lazy(() =>
 
 const fieldLabelClass = "mt-4 block text-[14px] text-muted-foreground";
 
-function VisibilityPicker({
+export function VisibilityPicker({
   value,
   onChange,
 }: {

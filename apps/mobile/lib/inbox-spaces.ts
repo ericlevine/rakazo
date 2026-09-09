@@ -39,11 +39,21 @@ export function spaceInboxItems(spaces: InboxSpace[]): InboxSpaceItem[] {
     if (spaces.length > 1 || !space.isDefault || chats.length === 0) {
       items.push({ type: "heading", key: space.id, title: space.name, space });
     }
-    for (const group of groupBotsForSidebar(chats, space.botSections)) {
-      if (group.title) {
-        items.push({ type: "heading", key: `${space.id}:${group.key}`, title: group.title });
+    for (const bucket of [
+      { key: "workspace", title: "Workspace", visibility: "workspace" },
+      { key: "personal", title: "Personal", visibility: "private" },
+    ] as const) {
+      for (const group of groupBotsForSidebar(
+        chats.filter((chat) => chat.visibility === bucket.visibility),
+        space.botSections,
+      )) {
+        items.push({
+          type: "heading",
+          key: `${space.id}:${bucket.key}:${group.key}`,
+          title: group.title ? `${bucket.title} · ${group.title}` : bucket.title,
+        });
+        items.push(...group.bots);
       }
-      items.push(...group.bots);
     }
     return items;
   });

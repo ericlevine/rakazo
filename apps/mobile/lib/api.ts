@@ -732,6 +732,8 @@ export type MobileGroup = Pick<
   | "unread"
   | "updatedAt"
   | "members"
+  | "visibility"
+  | "canManage"
 > &
   Partial<Pick<Group, "spaceId">>;
 

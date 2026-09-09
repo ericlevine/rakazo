@@ -2326,6 +2326,10 @@ msgstr "새 비밀번호"
 msgid "New section"
 msgstr "새 섹션"
 
+#: src/pages/BotContextMenu.tsx:133
+msgid "New thread"
+msgstr "새 스레드"
+
 #: src/pages/KnowledgeSection.tsx:469
 msgid "New skill"
 msgstr "새 스킬"
