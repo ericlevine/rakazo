@@ -102,6 +102,8 @@ export function projectMessages(
       live.blocks = reduceLiveMessageBlocks(live.blocks, {
         type: "tool",
         name: String(payload.name ?? ""),
+        executionId: typeof payload.executionId === "string" ? payload.executionId : undefined,
+        input: payload.input,
       });
       live.meta = {
         ...live.meta,
@@ -109,6 +111,21 @@ export function projectMessages(
         botId: event.botId ?? undefined,
         createdAt,
       };
+      continue;
+    }
+    if (event.type === "agent.tool.completed") {
+      const live = liveProjection(event, createdAt);
+      live.blocks = reduceLiveMessageBlocks(live.blocks, {
+        type: "tool_completed",
+        executionId: String(payload.executionId ?? ""),
+        status: toolCallStatus(payload.outcome),
+        output: payload.output,
+        durationMs:
+          typeof payload.durationMs === "number"
+            ? Math.max(0, Math.round(payload.durationMs))
+            : undefined,
+      });
+      live.meta = { ...live.meta, seq: event.seq, createdAt };
       continue;
     }
     if (event.type === "thread.cleared") {
@@ -189,12 +206,22 @@ export function runFailureError(event: {
 
 export type LiveMessageUpdate =
   | { type: "progress"; payload: Record<string, unknown> | undefined }
-  | { type: "tool"; name: string };
+  | { type: "tool"; name: string; executionId?: string; input?: unknown }
+  | {
+      type: "tool_completed";
+      executionId: string;
+      status: "succeeded" | "failed" | "paused";
+      output?: unknown;
+      durationMs?: number;
+    };
 
 export function reduceLiveMessageBlocks(
   blocks: readonly MessageBlock[],
   update: LiveMessageUpdate,
 ): MessageBlock[] {
+  if (update.type === "tool_completed") {
+    return updateToolCallCompletion(blocks, update);
+  }
   const tail = blocks.at(-1);
   const segments = tail?.kind === "progress" ? blocks.slice(0, -1) : blocks;
   const priorText = liveMessageText(blocks);
@@ -210,6 +237,20 @@ export function reduceLiveMessageBlocks(
     ...(tail?.kind === "progress" ? (tail.pendingToolNames ?? []) : []),
     ...(update.type === "tool" ? [update.name] : []),
   ];
+  const priorPendingToolCalls = tail?.kind === "progress" ? (tail.pendingToolCalls ?? []) : [];
+  const pendingToolCalls = [
+    ...priorPendingToolCalls,
+    ...(update.type === "tool" && (update.executionId !== undefined || update.input !== undefined)
+      ? [
+          {
+            executionId: update.executionId ?? `tool:${update.name}:${pendingToolNames.length}`,
+            name: update.name,
+            input: update.input,
+            status: "running" as const,
+          },
+        ]
+      : []),
+  ];
   const activity =
     update.type === "progress"
       ? update.payload?.activity === true
@@ -217,7 +258,11 @@ export function reduceLiveMessageBlocks(
 
   if (pendingToolNames.length > 0 && endsSentence(tailText)) {
     let next = activity ? [...segments] : appendTextSegment(segments, tailText);
-    for (const name of pendingToolNames) next = appendToolCallSegment(next, name);
+    if (pendingToolCalls.length > 0) {
+      for (const call of pendingToolCalls) next = appendToolCallSegment(next, call.name, call);
+    } else {
+      for (const name of pendingToolNames) next = appendToolCallSegment(next, name);
+    }
     return next;
   }
   if (!tailText) return [...segments];
@@ -228,6 +273,7 @@ export function reduceLiveMessageBlocks(
       text: tailText,
       ...(activity ? { activity: true as const } : {}),
       ...(pendingToolNames.length > 0 ? { pendingToolNames } : {}),
+      ...(pendingToolCalls.length > 0 ? { pendingToolCalls } : {}),
     },
   ];
 }
@@ -286,14 +332,66 @@ export function appendTextSegment(segments: readonly MessageBlock[], text: strin
 export function appendToolCallSegment(
   segments: readonly MessageBlock[],
   toolName: string,
+  call?: NonNullable<Extract<MessageBlock, { kind: "steps" }>["calls"]>[number],
 ): MessageBlock[] {
   const last = segments.at(-1);
   const priorSteps = last?.kind === "steps" ? last.steps : [];
   const steps = appendToolStep(priorSteps, toolName);
   if (last?.kind === "steps") {
-    return [...segments.slice(0, -1), { kind: "steps", steps }];
+    return [
+      ...segments.slice(0, -1),
+      { kind: "steps", steps, ...(call ? { calls: [...(last.calls ?? []), call] } : {}) },
+    ];
   }
-  return [...segments, { kind: "steps", steps }];
+  return [...segments, { kind: "steps", steps, ...(call ? { calls: [call] } : {}) }];
+}
+
+function toolCallStatus(value: unknown): "succeeded" | "failed" | "paused" {
+  if (value === "error" || value === "failed") return "failed";
+  return value === "paused" ? "paused" : "succeeded";
+}
+
+export function updateToolCallCompletion(
+  blocks: readonly MessageBlock[],
+  completion: Extract<LiveMessageUpdate, { type: "tool_completed" }>,
+): MessageBlock[] {
+  return blocks.map((block) => {
+    if (block.kind === "steps" && block.calls) {
+      return {
+        ...block,
+        calls: block.calls.map((call) =>
+          call.executionId === completion.executionId
+            ? {
+                ...call,
+                status: completion.status,
+                ...(completion.output === undefined ? {} : { output: completion.output }),
+                ...(completion.durationMs === undefined
+                  ? {}
+                  : { durationMs: completion.durationMs }),
+              }
+            : call,
+        ),
+      };
+    }
+    if (block.kind === "progress" && block.pendingToolCalls) {
+      return {
+        ...block,
+        pendingToolCalls: block.pendingToolCalls.map((call) =>
+          call.executionId === completion.executionId
+            ? {
+                ...call,
+                status: completion.status,
+                ...(completion.output === undefined ? {} : { output: completion.output }),
+                ...(completion.durationMs === undefined
+                  ? {}
+                  : { durationMs: completion.durationMs }),
+              }
+            : call,
+        ),
+      };
+    }
+    return block;
+  });
 }
 
 export function humanizeToolName(name: string): string {

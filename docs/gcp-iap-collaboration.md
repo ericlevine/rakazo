@@ -29,6 +29,16 @@ and issues its ordinary session cookie.
   user memory, notification settings, and personal credentials remain
   user-scoped.
 
+Tool activity is visible to everyone who can view the conversation. Each bot
+reply keeps tool calls collapsed by default; opening the summary reveals the
+individual tools, and opening a tool reveals its input and output. These details
+are stored in the existing thread event/message stream so they update live and
+survive refreshes. Before persistence, known run secrets and values under
+credential-like keys are redacted, binary payloads are replaced with metadata,
+and unusually large values are truncated. Authorization is unchanged: private
+conversation details remain private, and workspace conversation details follow
+the workspace's existing membership checks.
+
 Only grant `roles/iap.httpsResourceAccessor` to named users or a controlled
 Google group. Do not grant it to `allAuthenticatedUsers`.
 
@@ -95,7 +105,9 @@ authentication/collaboration and deployment documentation. To update it:
 
 1. Fetch `upstream` and rebase the branch onto `upstream/main`.
 2. Resolve shared database bootstrap changes first, then Better Auth plugin and
-   environment wiring, then the web session bootstrap.
+   environment wiring, then the web session bootstrap. Replay the optional
+   tool-call fields in the shared message contract before the core event
+   projection, executor audit payload, and web/mobile disclosure components.
 3. Run Prisma generation if the upstream schema or generated client changed.
 4. Run the focused auth, database, API, and web tests, followed by the full
    test/type-check/lint suite.

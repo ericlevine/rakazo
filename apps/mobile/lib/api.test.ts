@@ -1640,6 +1640,41 @@ describe("mobile thread event reduction", () => {
     );
   });
 
+  it("updates detailed mobile tool calls on completion", () => {
+    const called = applyMobileThreadEvent(snapshot(), {
+      id: "event-1",
+      type: "agent.tool.called",
+      runId: "run-1",
+      payload: { name: "shell", executionId: "call-1", input: { command: "pwd" } },
+    });
+    const completed = applyMobileThreadEvent(called, {
+      id: "event-2",
+      type: "agent.tool.completed",
+      runId: "run-1",
+      payload: {
+        executionId: "call-1",
+        outcome: "succeeded",
+        output: { stdout: "/workspace" },
+      },
+    });
+
+    expect(completed?.messages[0]?.blocks).toEqual([
+      {
+        kind: "steps",
+        steps: [{ label: "Shell", count: 1 }],
+        calls: [
+          {
+            executionId: "call-1",
+            name: "shell",
+            input: { command: "pwd" },
+            output: { stdout: "/workspace" },
+            status: "succeeded",
+          },
+        ],
+      },
+    ]);
+  });
+
   it("formats channel messages with their platform attribution", () => {
     expect(
       blockText(

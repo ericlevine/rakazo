@@ -10,16 +10,23 @@ const states = [
   { name: "complete", live: false },
 ];
 
-test("chat shows only the bot response", async ({ page }, testInfo) => {
+test("tool calls use nested progressive disclosure", async ({ page }, testInfo) => {
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
     for (const state of states) {
       await page.goto(`/e2e/fixtures/tool-activity-disclosure.html?live=${state.live ? 1 : 0}`);
       await expect(page.getByTestId("response")).toBeVisible();
-      await expect(page.getByTestId("tool-activity")).toHaveCount(0);
-      await expect(page.getByText("Working…")).toHaveCount(0);
-      await expect(page.getByText("Done")).toHaveCount(0);
-      await expect(page.getByText("Shell", { exact: false })).toHaveCount(0);
+      const tools = page.getByTestId("tool-calls");
+      await expect(tools).toContainText("2 tool calls");
+      await expect(page.getByText("Shell", { exact: true })).toBeHidden();
+      await tools.locator(":scope > summary").click();
+      await expect(page.getByText("Shell", { exact: true })).toBeVisible();
+      await expect(page.getByText(state.live ? "Running" : "Completed").first()).toBeVisible();
+      await page.getByText("Shell", { exact: true }).click();
+      await expect(page.getByText("Input", { exact: true }).first()).toBeVisible();
+      await expect(page.getByText("git status --short", { exact: false })).toBeVisible();
+      if (!state.live)
+        await expect(page.getByText("Output", { exact: true }).first()).toBeVisible();
       await expect(page.locator("body")).toHaveJSProperty("scrollWidth", viewport.width);
       await captureScreenshot(page, testInfo, `${state.name}-${viewport.name}`);
     }

@@ -425,6 +425,9 @@ export function reduceThreadSnapshot(
     const blocks = reduceLiveMessageBlocks(previous?.blocks ?? [], {
       type: "tool",
       name: String(event.payload.name ?? ""),
+      executionId:
+        typeof event.payload.executionId === "string" ? event.payload.executionId : undefined,
+      input: event.payload.input,
     });
     const next: ThreadMessage = {
       id: liveId,
@@ -439,7 +442,31 @@ export function reduceThreadSnapshot(
     return { ...prev, cursor: event.seq, messages: [...remaining, next] };
   }
   if (event.type === "agent.tool.completed") {
-    return { ...prev, cursor: event.seq };
+    if (typeof event.payload.executionId !== "string") {
+      return { ...prev, cursor: event.seq };
+    }
+    const liveId = progressMessageId(event);
+    const { previous, remaining } = takeLiveMessage(prev.messages, liveId);
+    if (!previous) return { ...prev, cursor: event.seq };
+    const outcome = event.payload.outcome;
+    const next: ThreadMessage = {
+      ...previous,
+      seq: event.seq,
+      blocks: reduceLiveMessageBlocks(previous.blocks, {
+        type: "tool_completed",
+        executionId: event.payload.executionId,
+        status:
+          outcome === "error" || outcome === "failed"
+            ? "failed"
+            : outcome === "paused"
+              ? "paused"
+              : "succeeded",
+        output: event.payload.output,
+        durationMs:
+          typeof event.payload.durationMs === "number" ? event.payload.durationMs : undefined,
+      }),
+    };
+    return { ...prev, cursor: event.seq, messages: [...remaining, next] };
   }
   if (event.type === "thread.subagent") {
     const block = subagentBlockFromPayload(event.payload);

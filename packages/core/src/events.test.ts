@@ -38,6 +38,53 @@ describe("isRunTerminalEvent", () => {
 });
 
 describe("reduceLiveMessageBlocks", () => {
+  it("records detailed calls and applies their completion by execution id", () => {
+    const called = reduceLiveMessageBlocks([], {
+      type: "tool",
+      name: "read_file",
+      executionId: "call-1",
+      input: { path: "notes.md" },
+    });
+    expect(called).toEqual([
+      {
+        kind: "steps",
+        steps: [{ label: "Read file", count: 1 }],
+        calls: [
+          {
+            executionId: "call-1",
+            name: "read_file",
+            input: { path: "notes.md" },
+            status: "running",
+          },
+        ],
+      },
+    ]);
+    expect(
+      reduceLiveMessageBlocks(called, {
+        type: "tool_completed",
+        executionId: "call-1",
+        status: "succeeded",
+        output: { text: "hello" },
+        durationMs: 12,
+      }),
+    ).toEqual([
+      {
+        kind: "steps",
+        steps: [{ label: "Read file", count: 1 }],
+        calls: [
+          {
+            executionId: "call-1",
+            name: "read_file",
+            input: { path: "notes.md" },
+            output: { text: "hello" },
+            status: "succeeded",
+            durationMs: 12,
+          },
+        ],
+      },
+    ]);
+  });
+
   it("preserves structured live activity markers", () => {
     expect(
       reduceLiveMessageBlocks([], {

@@ -135,6 +135,7 @@ import {
 } from "../components/ComputersUnavailableHint";
 import { ComputerUpdateProgress } from "../components/ComputerUpdateProgress";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
+import { ToolCallsBlock } from "../components/ToolCallsBlock";
 import { SkillDraftCard } from "../components/teach/SkillDraftCard";
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
@@ -5389,6 +5390,9 @@ const MessageView = memo(function MessageView({
                   </div>
                 );
               }
+              if (block.kind === "steps" && block.calls?.length) {
+                return <ToolCallsBlock key={i} block={block} />;
+              }
               return null;
             })}
             {!isLive && voiceReady && message.blocks.some((block) => block.kind === "text") ? (
@@ -5411,6 +5415,9 @@ const MessageView = memo(function MessageView({
       {messageContext}
       {message.blocks.map((block, i) => {
         if (isToolActivityBlock(block)) return null;
+        if (block.kind === "steps" && block.calls?.length) {
+          return <ToolCallsBlock key={i} block={block} />;
+        }
         if (block.kind === "handoff") {
           const from = memberName?.(block.fromBotId) ?? t`bot`;
           const to = memberName?.(block.toBotId) ?? t`bot`;

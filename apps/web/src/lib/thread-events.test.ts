@@ -889,6 +889,53 @@ describe("thread event reduction", () => {
     expect(next?.messages).toEqual(initial.messages);
   });
 
+  it("updates detailed tool calls live from called through completed", () => {
+    const called = reduceThreadSnapshot(
+      snapshot([]),
+      event({
+        type: "agent.tool.called",
+        seq: 4,
+        runId: "run-1",
+        payload: {
+          name: "shell",
+          executionId: "call-1",
+          input: { command: "pwd" },
+        },
+      }),
+    );
+    const completed = reduceThreadSnapshot(
+      called,
+      event({
+        type: "agent.tool.completed",
+        seq: 5,
+        runId: "run-1",
+        payload: {
+          executionId: "call-1",
+          outcome: "succeeded",
+          durationMs: 7,
+          output: { stdout: "/workspace" },
+        },
+      }),
+    );
+
+    expect(completed?.messages[0]?.blocks).toEqual([
+      {
+        kind: "steps",
+        steps: [{ label: "Shell", count: 1 }],
+        calls: [
+          {
+            executionId: "call-1",
+            name: "shell",
+            input: { command: "pwd" },
+            output: { stdout: "/workspace" },
+            status: "succeeded",
+            durationMs: 7,
+          },
+        ],
+      },
+    ]);
+  });
+
   it("holds a tool call that lands mid-sentence until the sentence completes", () => {
     const initial = snapshot([]);
 

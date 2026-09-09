@@ -1,4 +1,8 @@
 export const RU_MESSAGES: Record<string, string> = {
+  "{count} tool calls": "Вызовов инструментов: {count}",
+  "1 tool call": "1 вызов инструмента",
+  Input: "Ввод",
+  Output: "Вывод",
   Access: "Доступ",
   Workspace: "Рабочее пространство",
   "Ask the server owner to configure this provider.":

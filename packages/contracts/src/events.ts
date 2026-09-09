@@ -88,6 +88,15 @@ const ChartBlock = z
 export const SecretAskPurpose = z.enum(["otp", "password", "api_key"]);
 export type SecretAskPurpose = z.infer<typeof SecretAskPurpose>;
 
+const ToolCallDetail = z.object({
+  executionId: z.string(),
+  name: z.string(),
+  input: z.any().optional(),
+  output: z.any().optional(),
+  status: z.enum(["running", "succeeded", "failed", "paused"]),
+  durationMs: z.number().int().nonnegative().optional(),
+});
+
 export const MessageBlock = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: z.string() }),
   z.object({
@@ -153,10 +162,13 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     /** Provider-generated tool status rather than assistant-authored narration. */
     activity: z.literal(true).optional(),
     pendingToolNames: z.array(z.string()).optional(),
+    pendingToolCalls: z.array(ToolCallDetail).optional(),
   }),
   z.object({
     kind: z.literal("steps"),
     steps: z.array(z.object({ label: z.string(), count: z.number().int().positive() })),
+    /** Redacted, bounded call details. Older messages may contain only aggregate steps. */
+    calls: z.array(ToolCallDetail).optional(),
     durationMs: z.number().int().nonnegative().optional(),
   }),
   z.object({

@@ -1,4 +1,8 @@
 export const ZH_MESSAGES: Record<string, string> = {
+  "{count} tool calls": "{count} 次工具调用",
+  "1 tool call": "1 次工具调用",
+  Input: "输入",
+  Output: "输出",
   Access: "访问权限",
   Workspace: "工作区",
   "Release computer": "释放电脑",

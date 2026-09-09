@@ -10,6 +10,8 @@
     <script type="module">
       import { createElement as h } from "react";
       import { createRoot } from "react-dom/client";
+      import { I18nBootstrap } from "../../src/components/I18nBootstrap.tsx";
+      import { ToolCallsBlock } from "../../src/components/ToolCallsBlock.tsx";
       import "../../src/styles.css";
 
       const live = new URLSearchParams(location.search).get("live") === "1";
@@ -22,18 +24,45 @@
         "div",
         {
           className:
-            "max-w-[74%] space-y-2.5 rounded-[20px] bg-[#1A1A1D] px-[18px] py-3 text-[15.5px] leading-[1.5] text-[#DFDFE2]",
+            "max-w-[74%] space-y-2.5 rounded-[20px] bg-muted px-[18px] py-3 text-[15.5px] leading-[1.5] text-foreground",
         },
         response,
+        h(ToolCallsBlock, {
+          block: {
+            kind: "steps",
+            steps: [
+              { label: "Shell", count: 1 },
+              { label: "Read file", count: 1 },
+            ],
+            calls: [
+              {
+                executionId: "call-1",
+                name: "shell",
+                input: { command: "git status --short" },
+                ...(live ? {} : { output: { exitCode: 0, stdout: "clean" } }),
+                status: live ? "running" : "succeeded",
+              },
+              {
+                executionId: "call-2",
+                name: "read_file",
+                input: { path: "README.md" },
+                ...(live ? {} : { output: "Project notes" }),
+                status: live ? "running" : "succeeded",
+              },
+            ],
+          },
+        }),
       );
       createRoot(document.getElementById("root")).render(
-        h(
-          "main",
-          {
-            className:
-              "flex min-h-screen items-end bg-[#101012] px-4 py-6 md:px-8 md:py-8",
-          },
-          h("div", { className: "flex w-full justify-start" }, bubble),
+        h(I18nBootstrap, null,
+          h(
+            "main",
+            {
+              className:
+                "flex min-h-screen items-end bg-background px-4 py-6 md:px-8 md:py-8",
+            },
+            h("div", { className: "flex w-full justify-start" }, bubble),
+          ),
         ),
       );
     </script>

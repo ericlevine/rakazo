@@ -17,6 +17,8 @@ import {
   buildComposerMentionOptions,
   type ComposerMention,
   cloudAgentHttpsUrl,
+  displayToolCallValue,
+  humanizeToolName,
   isApprovalAskBlock,
   isRunTerminalEvent,
   isSecretAskBlock,
@@ -2865,6 +2867,10 @@ const MessageBubble = memo(function MessageBubble({
     );
   }
   const segments = messagePresentationSegments(message.blocks);
+  const toolBlocks = message.blocks.filter(
+    (block): block is Extract<MessageBlock, { kind: "steps" }> =>
+      block.kind === "steps" && Boolean(block.calls?.length),
+  );
   const speaker =
     message.role === "bot"
       ? (memberName(members, message.botId) ?? botName)
@@ -2883,6 +2889,9 @@ const MessageBubble = memo(function MessageBubble({
           actionProps={actionProps}
         />
       ))}
+      {toolBlocks.map((block, index) => (
+        <MobileToolCallsBlock key={`${message.id}-tools-${index}`} block={block} />
+      ))}
       {appConnectBlocks.map((block, index) => (
         <AppConnectCard
           key={`${block.provider}-${index}`}
@@ -2895,6 +2904,122 @@ const MessageBubble = memo(function MessageBubble({
     </View>
   );
 });
+
+function MobileToolCallsBlock({ block }: { block: Extract<MessageBlock, { kind: "steps" }> }) {
+  const tokens = mobileTokens();
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const calls = block.calls ?? [];
+  if (calls.length === 0) return null;
+  const label =
+    calls.length === 1 ? t("1 tool call") : t("{count} tool calls", { count: calls.length });
+  return (
+    <View
+      style={{
+        width: "100%",
+        borderWidth: 1,
+        borderColor: tokens.border,
+        borderRadius: 16,
+        overflow: "hidden",
+        backgroundColor: tokens.card,
+      }}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={label}
+        onPress={() => setOpen((value) => !value)}
+        style={{ paddingHorizontal: 12, paddingVertical: 10, flexDirection: "row", gap: 8 }}
+      >
+        <Text style={{ color: tokens.mutedForeground }}>{open ? "▾" : "›"}</Text>
+        <Text style={{ color: tokens.mutedForeground, fontSize: 13 }}>{label}</Text>
+      </Pressable>
+      {open ? (
+        <View style={{ borderTopWidth: 1, borderTopColor: tokens.border, padding: 6 }}>
+          {calls.map((call, index) => {
+            const key = call.executionId || String(index);
+            const callOpen = expanded.has(key);
+            const status =
+              call.status === "running"
+                ? t("Running")
+                : call.status === "failed"
+                  ? t("Failed")
+                  : call.status === "paused"
+                    ? t("Paused")
+                    : t("Completed");
+            return (
+              <View key={key}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: callOpen }}
+                  onPress={() =>
+                    setExpanded((current) => {
+                      const next = new Set(current);
+                      if (next.has(key)) next.delete(key);
+                      else next.add(key);
+                      return next;
+                    })
+                  }
+                  style={{
+                    paddingHorizontal: 8,
+                    paddingVertical: 9,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={{ color: tokens.foreground, fontSize: 13, flex: 1 }}
+                  >
+                    {humanizeToolName(call.name)}
+                  </Text>
+                  <Text style={{ color: tokens.mutedForeground, fontSize: 11 }}>{status}</Text>
+                </Pressable>
+                {callOpen ? (
+                  <View style={{ gap: 10, paddingHorizontal: 8, paddingBottom: 10 }}>
+                    {call.input !== undefined ? (
+                      <MobileToolCallValue label={t("Input")} value={call.input} />
+                    ) : null}
+                    {call.output !== undefined ? (
+                      <MobileToolCallValue label={t("Output")} value={call.output} />
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function MobileToolCallValue({ label, value }: { label: string; value: unknown }) {
+  const tokens = mobileTokens();
+  return (
+    <View style={{ gap: 4 }}>
+      <Text style={{ color: tokens.mutedForeground, fontSize: 11, fontWeight: "600" }}>
+        {label}
+      </Text>
+      <Text
+        selectable
+        style={{
+          color: tokens.foreground,
+          backgroundColor: tokens.muted,
+          borderRadius: 10,
+          padding: 10,
+          fontSize: 11,
+          lineHeight: 16,
+          fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+        }}
+      >
+        {displayToolCallValue(value)}
+      </Text>
+    </View>
+  );
+}
 
 function MessageTextCard({
   message,

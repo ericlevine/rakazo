@@ -20,7 +20,8 @@ export function messagePresentationSegments(
   blocks: readonly MessageBlock[],
 ): MessagePresentationSegment[] {
   const content = blocks.filter(
-    (block) => block.kind !== "app_connect" && !isToolActivityBlock(block),
+    (block) =>
+      block.kind !== "app_connect" && block.kind !== "steps" && !isToolActivityBlock(block),
   );
   return content.length > 0 ? [{ kind: "content", blocks: content }] : [];
 }

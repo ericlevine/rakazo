@@ -17,7 +17,7 @@ import {
 } from "./executor.js";
 
 describe("tool completion audit", () => {
-  it("records result metadata without persisting tool contents", () => {
+  it("records bounded result details without persisting binary content", () => {
     const payload = toolCompletionAuditPayload({
       name: "computer_observe",
       executionId: "call-1",
@@ -43,6 +43,13 @@ describe("tool completion audit", () => {
       executionId: "call-1",
       durationMs: 13,
       outcome: "succeeded",
+      output: {
+        frameId: "frame-1",
+        capturedAt: "2026-09-07T00:00:00.000Z",
+        width: 1280,
+        height: 720,
+        activeWindow: { title: "Private window" },
+      },
       contentTypes: ["text", "image"],
       frameId: "frame-1",
       capturedAt: "2026-09-07T00:00:00.000Z",
@@ -50,7 +57,6 @@ describe("tool completion audit", () => {
       height: 720,
     });
     expect(payload).not.toHaveProperty("content");
-    expect(payload).not.toHaveProperty("activeWindow");
   });
 
   it("does not fail the run when the audit append fails", async () => {

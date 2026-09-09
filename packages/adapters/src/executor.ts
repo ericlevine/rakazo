@@ -36,6 +36,7 @@ import {
   BotSecretSubmission,
   isAttachmentImageMimeType,
 } from "@rakazo/contracts";
+import type { ToolCallDetail } from "@rakazo/core";
 import {
   type ActionApprovalRule,
   appendTextSegment,
@@ -66,10 +67,12 @@ import {
   renderBotDirectory,
   resolveActionApprovalDetail,
   sandboxCommandTimeoutMs,
+  sanitizeToolCallDetail,
   type ToolCallStreak,
   toolRequiresApproval,
   toolRequiresExplicitApproval,
   unattendedTriggerToolRequiresApproval,
+  updateToolCallCompletion,
   userTurnBlocksForRun,
 } from "@rakazo/core";
 import { approvalEffectKey } from "@rakazo/core/node/approval-effect-key";
@@ -533,8 +536,22 @@ export function toolCompletionAuditPayload(
   };
   if (completion.error !== undefined) {
     payload.error = sanitizeConnectorError(completion.error, secrets);
+    payload.output = sanitizeToolCallDetail(
+      { error: sanitizeConnectorError(completion.error, secrets) },
+      secrets,
+    );
   }
-  if (!isAuditableToolResult(completion.result)) return payload;
+  if (!isAuditableToolResult(completion.result)) {
+    if (completion.result !== undefined) {
+      payload.output = sanitizeToolCallDetail(completion.result, secrets);
+    }
+    return payload;
+  }
+
+  payload.output = sanitizeToolCallDetail(
+    completion.result.details ?? completion.result.content,
+    secrets,
+  );
 
   payload.contentTypes = completion.result.content.flatMap((part) => {
     if (!part || typeof part !== "object") return [];
@@ -1502,19 +1519,56 @@ export function createRunExecutor(deps: ExecutorDeps) {
         }
         // Tool calls that land mid-sentence wait here until the narration catches up to a
         // sentence boundary, so the step chips never render in the middle of a clause.
-        let pendingToolNames: string[] = [];
+        let pendingToolCalls: ToolCallDetail[] = [];
         const flushPendingTools = () => {
           if (currentTextSegment) {
             messageSegments = appendTextSegment(messageSegments, currentTextSegment);
             currentTextSegment = "";
           }
-          for (const name of pendingToolNames) {
-            messageSegments = appendToolCallSegment(messageSegments, name);
+          for (const call of pendingToolCalls) {
+            messageSegments = appendToolCallSegment(messageSegments, call.name, call);
           }
-          pendingToolNames = [];
+          pendingToolCalls = [];
         };
         const tryFlushPendingTools = () => {
-          if (pendingToolNames.length > 0 && endsSentence(currentTextSegment)) flushPendingTools();
+          if (pendingToolCalls.length > 0 && endsSentence(currentTextSegment)) flushPendingTools();
+        };
+        const recordToolCompletion = (completion: AgentToolCompletion) => {
+          const outcome: "paused" | "succeeded" | "failed" = completion.paused
+            ? "paused"
+            : completion.error === undefined
+              ? "succeeded"
+              : "failed";
+          const output =
+            completion.error !== undefined
+              ? sanitizeToolCallDetail(
+                  { error: sanitizeConnectorError(completion.error, runSecrets) },
+                  runSecrets,
+                )
+              : isAuditableToolResult(completion.result)
+                ? sanitizeToolCallDetail(
+                    completion.result.details ?? completion.result.content,
+                    runSecrets,
+                  )
+                : sanitizeToolCallDetail(completion.result, runSecrets);
+          const update = {
+            type: "tool_completed" as const,
+            executionId: completion.executionId,
+            status: outcome,
+            ...(output === undefined ? {} : { output }),
+            durationMs: Math.max(0, Math.round(completion.durationMs)),
+          };
+          pendingToolCalls = pendingToolCalls.map((call) =>
+            call.executionId === completion.executionId
+              ? {
+                  ...call,
+                  status: outcome,
+                  ...(output === undefined ? {} : { output }),
+                  durationMs: update.durationMs,
+                }
+              : call,
+          );
+          messageSegments = updateToolCallCompletion(messageSegments, update);
         };
         let pendingProgress = "";
         let lastProgressAt = 0;
@@ -3420,8 +3474,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     resolveConnectedModel(run, provider, modelId, (values) =>
                       runSecrets.push(...values),
                     ),
-              onToolCompleted: (completion) =>
-                appendToolCompletionAudit(
+              onToolCompleted: (completion) => {
+                recordToolCompletion(completion);
+                return appendToolCompletionAudit(
                   deps,
                   {
                     spaceId: run.spaceId,
@@ -3431,7 +3486,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   },
                   completion,
                   runSecrets,
-                ),
+                );
+              },
               claimSteering: scripted
                 ? undefined
                 : async (seenIds) => {
@@ -3648,15 +3704,21 @@ export function createRunExecutor(deps: ExecutorDeps) {
               if (event.name !== "message_user") {
                 await publishMidTurnNarration();
               }
+              const safeInput = sanitizeToolCallDetail(event.args, runSecrets);
               await deps.events.append({
                 spaceId: run.spaceId,
                 threadId: thread.id,
                 botId: bot.id,
                 type: "agent.tool.called",
                 runId,
-                payload: { name: event.name, executionId: event.executionId },
+                payload: { name: event.name, executionId: event.executionId, input: safeInput },
               });
-              pendingToolNames.push(event.name);
+              pendingToolCalls.push({
+                name: event.name,
+                executionId: event.executionId,
+                input: safeInput,
+                status: "running",
+              });
               tryFlushPendingTools();
               const loopGuard = advanceToolCallLoopGuard(toolCallStreak, event.name, event.args);
               toolCallStreak = loopGuard.streak;
@@ -3703,6 +3765,16 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 const startedAt = Date.now();
                 try {
                   const result = await applyTool(event.name, event.args, event.executionId);
+                  recordToolCompletion(
+                    toolCompletionFromResult(
+                      {
+                        name: event.name,
+                        executionId: event.executionId,
+                        durationMs: Date.now() - startedAt,
+                      },
+                      result,
+                    ),
+                  );
                   await appendToolCompletionAudit(
                     deps,
                     {
@@ -3723,6 +3795,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   );
                   if (isToolPauseResult(result)) return;
                 } catch (error) {
+                  recordToolCompletion({
+                    name: event.name,
+                    executionId: event.executionId,
+                    durationMs: Date.now() - startedAt,
+                    error,
+                  });
                   await appendToolCompletionAudit(
                     deps,
                     {
@@ -4315,6 +4393,20 @@ function redactBlocks(blocks: MessageBlock[], secrets: string[]): MessageBlock[]
     }
     if (block.kind === "bot_message_sent" || block.kind === "bot_message_received") {
       return { ...block, text: redactSecrets(block.text, secrets) };
+    }
+    if (block.kind === "steps" && block.calls) {
+      return {
+        ...block,
+        calls: block.calls.map((call) => ({
+          ...call,
+          ...(call.input === undefined
+            ? {}
+            : { input: sanitizeToolCallDetail(call.input, secrets) }),
+          ...(call.output === undefined
+            ? {}
+            : { output: sanitizeToolCallDetail(call.output, secrets) }),
+        })),
+      };
     }
     return block;
   });

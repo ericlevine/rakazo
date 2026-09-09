@@ -147,7 +147,7 @@ export interface AgentToolExecutionResult {
   details: unknown;
 }
 
-/** Ephemeral completion data for audit hooks; result contents must be redacted before persistence. */
+/** Ephemeral completion data for audit hooks; result contents must be bounded and redacted before persistence. */
 export interface AgentToolCompletion {
   name: string;
   executionId: string;
@@ -371,7 +371,7 @@ export interface AgentRunRequest {
     executionId: string,
     route?: ConnectorRoute,
   ) => Promise<unknown>;
-  /** Called after a tool returns; implementations must not persist raw result contents. */
+  /** Called after a tool returns; implementations may persist only bounded, redacted result contents. */
   onToolCompleted?: (completion: AgentToolCompletion) => Promise<void> | void;
   /** Atomically claim durable user steering at the runtime's next safe turn boundary. */
   claimSteering?: (seenIds: string[]) => Promise<AgentSteeringMessage[]>;

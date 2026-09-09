@@ -1026,6 +1026,9 @@ export function applyMobileThreadEvent(
       blocks: reduceLiveMessageBlocks((previous?.blocks ?? []) as MessageBlock[], {
         type: "tool",
         name: String(event.payload?.name ?? ""),
+        executionId:
+          typeof event.payload?.executionId === "string" ? event.payload.executionId : undefined,
+        input: event.payload?.input,
       }),
       ...(event.botId ? { botId: event.botId } : {}),
       ...(event.runId ? { runId: event.runId } : {}),
@@ -1037,7 +1040,34 @@ export function applyMobileThreadEvent(
     };
   }
   if (event.type === "agent.tool.completed") {
-    return { ...prev, cursor: event.seq ?? prev.cursor };
+    if (typeof event.payload?.executionId !== "string") {
+      return { ...prev, cursor: event.seq ?? prev.cursor };
+    }
+    const progressId = progressMessageId(event);
+    const { previous, remaining } = takeLiveMessage(prev.messages, progressId);
+    if (!previous) return { ...prev, cursor: event.seq ?? prev.cursor };
+    const outcome = event.payload?.outcome;
+    const next: MobileMessage = {
+      ...previous,
+      blocks: reduceLiveMessageBlocks((previous.blocks ?? []) as MessageBlock[], {
+        type: "tool_completed",
+        executionId: event.payload.executionId,
+        status:
+          outcome === "error" || outcome === "failed"
+            ? "failed"
+            : outcome === "paused"
+              ? "paused"
+              : "succeeded",
+        output: event.payload?.output,
+        durationMs:
+          typeof event.payload?.durationMs === "number" ? event.payload.durationMs : undefined,
+      }),
+    };
+    return {
+      ...prev,
+      cursor: event.seq ?? prev.cursor,
+      messages: [...remaining, next],
+    };
   }
   if (event.type === "thread.subagent") {
     const agentId = String(event.payload?.agentId ?? event.id ?? "live");
