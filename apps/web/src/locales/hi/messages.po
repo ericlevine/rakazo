@@ -2630,6 +2630,10 @@ msgstr "पिन करें"
 msgid "Playing…"
 msgstr "प्ले हो रहा है…"
 
+#: src/pages/Shell.tsx:1322
+msgid "Personal"
+msgstr "व्यक्तिगत"
+
 #: src/pages/RoutineEditor.tsx:600
 msgid "POST to"
 msgstr ""

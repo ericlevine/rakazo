@@ -2630,6 +2630,10 @@ msgstr "Закрепить"
 msgid "Playing…"
 msgstr "Воспроизведение…"
 
+#: src/pages/Shell.tsx:1322
+msgid "Personal"
+msgstr "Личное"
+
 #: src/pages/RoutineEditor.tsx:600
 msgid "POST to"
 msgstr "ОТПРАВИТЬ в"

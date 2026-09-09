@@ -2630,6 +2630,10 @@ msgstr "Fixar"
 msgid "Playing…"
 msgstr "Reproduzindo"
 
+#: src/pages/Shell.tsx:1322
+msgid "Personal"
+msgstr "Pessoal"
+
 #: src/pages/RoutineEditor.tsx:600
 msgid "POST to"
 msgstr ""

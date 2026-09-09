@@ -2630,6 +2630,10 @@ msgstr "置顶"
 msgid "Playing…"
 msgstr "播放中…"
 
+#: src/pages/Shell.tsx:1322
+msgid "Personal"
+msgstr "个人"
+
 #: src/pages/RoutineEditor.tsx:600
 msgid "POST to"
 msgstr "POST 到"

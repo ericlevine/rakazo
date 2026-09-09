@@ -2630,6 +2630,10 @@ msgstr "Sabitle"
 msgid "Playing…"
 msgstr "Çalınıyor…"
 
+#: src/pages/Shell.tsx:1322
+msgid "Personal"
+msgstr "Kişisel"
+
 #: src/pages/RoutineEditor.tsx:600
 msgid "POST to"
 msgstr ""

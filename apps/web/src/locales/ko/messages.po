@@ -2630,6 +2630,10 @@ msgstr "고정"
 msgid "Playing…"
 msgstr "재생 중…"
 
+#: src/pages/Shell.tsx:1322
+msgid "Personal"
+msgstr "개인"
+
 #: src/pages/RoutineEditor.tsx:600
 msgid "POST to"
 msgstr "POST 대상"
