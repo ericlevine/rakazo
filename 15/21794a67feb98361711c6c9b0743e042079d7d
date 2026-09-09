@@ -1,0 +1,19 @@
+docs/computer-runtime.md
+  s_7473766b870a35::t_cf2b3c10e701b8 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "1521794a67feb98361711c6c9b0743e042079d7d",
+  "prompts": {},
+  "sessions": {
+    "s_7473766b870a35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee01c4e7-71f7-4b06-a1ba-997c32c8f7c2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Eric Levine <eric@clawvisor.com>"
+    }
+  }
+}
