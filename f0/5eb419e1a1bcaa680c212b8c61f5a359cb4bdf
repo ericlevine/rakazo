@@ -1,0 +1,57 @@
+apps/mobile/app/bot-settings.tsx
+  s_09251b544e61f7::t_2b9672489df237 6,55,71-74,81,90,250,260,383-406
+apps/mobile/app/new.tsx
+  s_09251b544e61f7::t_ff17d061ad8fc9 5,26,54,148-171
+apps/mobile/app/thread.tsx
+  s_09251b544e61f7::t_7fdf4f5c9cb5e1 525,527,621-632,641-677
+apps/mobile/lib/api.ts
+  s_09251b544e61f7::t_b9782fa8b0da37 688-689
+apps/mobile/lib/inbox-spaces.test.ts
+  s_09251b544e61f7::t_e7bdd5281ceefa 57-58
+apps/mobile/lib/locales/ru.ts
+  s_16ce8d87e70eff::t_67af4cce40144f 2-3
+apps/mobile/lib/locales/zh.ts
+  s_16ce8d87e70eff::t_075a5074b911f2 2-3
+apps/web/src/pages/BotContextMenu.tsx
+  s_09251b544e61f7::t_6946fadf5777fa 29-31,63,90-110,112-113,115-122,128-133,138-154
+apps/web/src/pages/Shell.tsx
+  s_09251b544e61f7::t_c0a5ff8f8291e3 9,2163,2170,2574,2654,2660,3218,3361
+apps/web/src/pages/shell/bot-panel.tsx
+  s_09251b544e61f7::t_13066c90ac5980 6,44-74,120,130,144,214,245,264,427,560
+docs/gcp-iap-collaboration.md
+  s_09251b544e61f7::t_7541075bc26e34 19-23
+packages/contracts/src/domain.ts
+  s_09251b544e61f7::t_9c75604206d090 9-11,60-61,169-170,294,323
+packages/db/prisma/migrations/20260909090000_bot_workspace_visibility/migration.sql
+  s_09251b544e61f7::t_79d923b899a10e 1-8
+packages/db/prisma/schema.prisma
+  s_09251b544e61f7::t_96f730df464c1f 339,374
+packages/db/src/repos.test.ts
+  s_09251b544e61f7::t_61bfd3bbba0394 30,312-313,338-339,344-347
+packages/db/src/repos.ts
+  s_09251b544e61f7::t_63fd4a239034df 47-48,65,85-86,130,143-144,174-175,258,325,333-346,375,445,533,575
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "f05eb419e1a1bcaa680c212b8c61f5a359cb4bdf",
+  "prompts": {},
+  "sessions": {
+    "s_09251b544e61f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "488f6912-7a4b-48fe-8d6b-3743cc04f8bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eric Levine <eric@clawvisor.com>"
+    },
+    "s_16ce8d87e70eff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d046d287-bc3d-414d-96b1-1ddf66855a30",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eric Levine <eric@clawvisor.com>"
+    }
+  }
+}
