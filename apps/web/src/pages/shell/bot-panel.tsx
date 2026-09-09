@@ -16,6 +16,7 @@ import {
   BOT_DESCRIPTION_MAX_LENGTH,
   BOT_NAME_MAX_LENGTH,
   BOT_TITLE_MAX_LENGTH,
+  computerModeForVisibility,
 } from "@rakazo/contracts";
 import {
   BotAvatar,
@@ -72,42 +73,6 @@ function VisibilityPicker({
   );
 }
 
-function ComputerModePicker({
-  value,
-  onChange,
-  teamTestId,
-  privateTestId,
-}: {
-  value: ComputerMode;
-  onChange: (value: ComputerMode) => void;
-  teamTestId?: string;
-  privateTestId?: string;
-}) {
-  return (
-    <div className="mt-4">
-      <div className="text-[14px] text-muted-foreground">
-        <Trans>Computer</Trans>
-      </div>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        {(["team", "dedicated"] as const).map((mode) => (
-          <Toggle
-            key={mode}
-            variant="outline"
-            pressed={value === mode}
-            data-testid={mode === "team" ? teamTestId : privateTestId}
-            onPressedChange={(pressed) => {
-              if (pressed) onChange(mode);
-            }}
-            className="capitalize aria-pressed:border-foreground/40 aria-pressed:text-foreground"
-          >
-            {mode === "team" ? <Trans>Team</Trans> : <Trans>Private</Trans>}
-          </Toggle>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function CreateBotForm({
   onCreate,
   onCancel,
@@ -126,7 +91,6 @@ export function CreateBotForm({
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [computerMode, setComputerMode] = useState<ComputerMode>("team");
   const [visibility, setVisibility] = useState<BotVisibility>("private");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +104,7 @@ export function CreateBotForm({
         name: name.trim(),
         title: title.trim(),
         description: description.trim(),
-        computerMode,
+        computerMode: computerModeForVisibility(visibility),
         visibility,
       });
     } catch (err) {
@@ -203,14 +167,6 @@ export function CreateBotForm({
           className="mt-2"
         />
       </label>
-      <div data-testid="create-bot-computer">
-        <ComputerModePicker
-          value={computerMode}
-          onChange={setComputerMode}
-          teamTestId="create-bot-team"
-          privateTestId="create-bot-private"
-        />
-      </div>
       <VisibilityPicker value={visibility} onChange={setVisibility} />
       <Button
         className="mt-5"
@@ -259,7 +215,6 @@ export function BotSettings({
   const [title, setTitle] = useState(bot.title);
   const [description, setDescription] = useState(bot.description);
   const [color, setColor] = useState(bot.color);
-  const [computerMode, setComputerMode] = useState(bot.computerMode);
   const [memoryScope, setMemoryScope] = useState(bot.memoryScope);
   const [visibility, setVisibility] = useState(bot.visibility);
   const [autoSpeak, setAutoSpeak] = useState(bot.autoSpeak);
@@ -423,7 +378,6 @@ export function BotSettings({
             ›
           </span>
         </summary>
-        <ComputerModePicker value={computerMode} onChange={setComputerMode} />
         <VisibilityPicker value={visibility} onChange={setVisibility} />
         <Suspense fallback={null}>
           <ScratchpadSection botId={bot.id} />
@@ -555,7 +509,7 @@ export function BotSettings({
               description: nextDescription,
               instructions: nextDescription,
               color,
-              computerMode,
+              computerMode: computerModeForVisibility(visibility),
               memoryScope,
               visibility,
               autoSpeak,

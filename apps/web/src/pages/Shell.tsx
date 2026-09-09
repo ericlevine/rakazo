@@ -95,6 +95,7 @@ import {
   Monitor,
   MoreHorizontal,
   PanelLeftClose,
+  PanelLeftOpen,
   Paperclip,
   Plus,
   Puzzle,
@@ -3021,6 +3022,18 @@ export function ShellPage() {
       >
         <div className="app-drag flex items-center justify-between border-b border-sidebar-border px-3 py-[17px] md:px-[22px]">
           <div className="flex min-w-0 items-center gap-2">
+            {botsSidebarCollapsed ? (
+              <button
+                type="button"
+                aria-label={t`Show bots`}
+                title={t`Show bots`}
+                data-testid="restore-bots-sidebar"
+                onClick={() => setBotsSidebarCollapsedPref(false)}
+                className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:grid"
+              >
+                <PanelLeftOpen size={18} strokeWidth={1.8} aria-hidden="true" />
+              </button>
+            ) : null}
             <button
               type="button"
               aria-label={t`Open navigation`}
@@ -3091,6 +3104,7 @@ export function ShellPage() {
             scrollRef={messageScroll}
             artifactTarget={transcriptArtifactTarget}
             messages={transcriptMessages}
+            showAuthors={active?.visibility === "workspace"}
             olderCursor={activeSnapshot?.olderCursor ?? null}
             loadingOlder={loadingOlder}
             answerableAskMessageId={answerableAskMessageId}
@@ -4060,6 +4074,7 @@ const Transcript = memo(function Transcript({
   scrollRef,
   artifactTarget,
   messages,
+  showAuthors,
   olderCursor,
   loadingOlder,
   answerableAskMessageId,
@@ -4084,6 +4099,7 @@ const Transcript = memo(function Transcript({
   scrollRef: RefObject<HTMLDivElement | null>;
   artifactTarget: ArtifactTarget;
   messages: ThreadMessage[];
+  showAuthors: boolean;
   olderCursor: number | null;
   loadingOlder: boolean;
   answerableAskMessageId: string | null;
@@ -4303,7 +4319,9 @@ const Transcript = memo(function Transcript({
                         ? undefined
                         : message.role === "bot"
                           ? memberName?.(message.botId)
-                          : undefined
+                          : showAuthors
+                            ? message.author?.name
+                            : undefined
                     }
                     memberName={memberName}
                     peerBot={peerBot}

@@ -1486,6 +1486,7 @@ export function createRouter(deps: RouterDeps) {
             threadId: target.threadId,
             role: "user",
             blocks,
+            authorUserId: context.actor.userId,
           });
           const active = await tx.run.findFirst({
             where: {
@@ -1538,7 +1539,12 @@ export function createRouter(deps: RouterDeps) {
             botId,
             type: "thread.message.created",
             runId: run?.id ?? active?.id,
-            payload: { messageId: message.id, role: "user", blocks },
+            payload: {
+              messageId: message.id,
+              role: "user",
+              blocks,
+              author: message.author ?? undefined,
+            },
           });
           await touchGroupUpdatedAt(tx, target.groupId);
           return { runId: run?.id, eventSeq: event.seq };

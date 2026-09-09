@@ -9,6 +9,10 @@ export type ComputerMode = z.infer<typeof ComputerModeSchema>;
 export const BotVisibilitySchema = z.enum(["private", "workspace"]);
 export type BotVisibility = z.infer<typeof BotVisibilitySchema>;
 
+export function computerModeForVisibility(visibility: BotVisibility): ComputerMode {
+  return visibility === "private" ? "dedicated" : "team";
+}
+
 export const MemoryScopeSchema = z.enum(["isolated", "shared"]);
 export type MemoryScopeValue = z.infer<typeof MemoryScopeSchema>;
 

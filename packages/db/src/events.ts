@@ -374,6 +374,8 @@ export async function sendUserMessage(
         role: "user",
         blocks: input.blocks,
         clientNonce: input.clientNonce,
+        authorUserId:
+          input.trigger === "user" || input.trigger === "follow_up" ? input.userId : undefined,
       });
       const createRun = input.createRun !== false;
       const busy =
@@ -435,7 +437,12 @@ export async function sendUserMessage(
         botId: input.botId,
         type: "thread.message.created",
         runId: run?.id ?? busy?.id,
-        payload: { messageId: message.id, role: "user", blocks: input.blocks },
+        payload: {
+          messageId: message.id,
+          role: "user",
+          blocks: input.blocks,
+          author: message.author ?? undefined,
+        },
       });
       return { message, task, run, busy, event };
     });

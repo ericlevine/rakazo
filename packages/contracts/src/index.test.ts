@@ -8,6 +8,7 @@ import {
   CreateGroupInput,
   CreateRoutineInput,
   canReactToThreadMessage,
+  computerModeForVisibility,
   McpServerConfigInput,
   MessageBlock,
   ModelOAuthBeginSchema,
@@ -21,6 +22,11 @@ import {
 } from "./index.js";
 
 describe("contracts", () => {
+  it("maps bot access to matching computer isolation", () => {
+    expect(computerModeForVisibility("private")).toBe("dedicated");
+    expect(computerModeForVisibility("workspace")).toBe("team");
+  });
+
   it("accepts structured live activity progress", () => {
     expect(MessageBlock.parse({ kind: "progress", text: "Using browser", activity: true })).toEqual(
       { kind: "progress", text: "Using browser", activity: true },

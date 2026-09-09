@@ -14,7 +14,7 @@ Pi runs in the Rakazo API/worker process. It is not installed in, or executed by
 
 ## Computer contract
 
-Each workspace gets one Team Computer by default. Bots share its files and installed tools. Each Team bot starts in `bots/<bot-id>/`, while deliberately shared work belongs in `shared/`. These folders organize work but are not security boundaries: every Team bot can access the full Team workspace. A bot can instead use a Private Computer, where the whole workspace is its home.
+Each workspace gets one Team Computer. Workspace-accessible bots use it and share its files and installed tools. Each Workspace bot starts in `bots/<bot-id>/`, while deliberately shared work belongs in `shared/`. These folders organize work but are not security boundaries: every bot on the Team Computer can access the full Team workspace. Private bots use a dedicated computer, where the whole workspace is the bot's home. The product exposes this as one Access choice so chat visibility and computer isolation stay aligned.
 
 Each active Team bot gets its own X display and Chrome process, with a persistent Chrome profile keyed to the bot's identity. Logins, cookies, and browser history are independent. Profiles are never cloned from another bot, merged, or deleted when a desktop is released. Both bots keep their changes; reopening a bot uses its existing profile even when its display slot changes. Team runs use fenced per-bot database leases: different bots can operate concurrently, and one bot has only one computer driver at a time.
 

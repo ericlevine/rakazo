@@ -30,6 +30,7 @@ model User {
   createdSpaces               Space[]                      @relation("SpaceCreator")
   botSecrets BotSecret[]
   agentSecrets               AgentSecret[]
+  authoredMessages           Message[]                    @relation("MessageAuthor")
 
   @@unique([email])
   @@map("user")
@@ -484,6 +485,8 @@ model Message {
   replies          Message[] @relation("MessageReplies")
   runId            String?
   clientNonce      String?
+  authorUserId     String?
+  author           User?     @relation("MessageAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
   sourceRuns            Run[]             @relation("RunSourceMessage")
   externalTranscriptFor  ExternalMessage?
   steeringMessages SteeringMessage[]
@@ -493,6 +496,7 @@ model Message {
   @@unique([threadId, clientNonce])
   @@index([threadId, seq])
   @@index([replyToMessageId])
+  @@index([authorUserId])
   @@map("messages")
 }
 

@@ -30,6 +30,7 @@ export async function loadMessagePage(
         where: { threadId, seq: { gte: minSeq, lte: maxSeq } },
         orderBy: { seq: "asc" },
         take: pageSize,
+        include: { author: { select: { id: true, name: true } } },
       });
       const first = rows[0];
       const hasOlder = first
@@ -56,6 +57,7 @@ export async function loadMessagePage(
       },
       orderBy: { seq: "desc" },
       take: pageSize + 1,
+      include: { author: { select: { id: true, name: true } } },
     });
     const hasOlder = rows.length > pageSize;
     const pageRows = rows.slice(0, pageSize).reverse();
@@ -176,6 +178,7 @@ function toThreadMessage(row: {
   botId: string | null;
   replyToMessageId: string | null;
   runId: string | null;
+  author: { id: string; name: string } | null;
   createdAt: Date;
 }): ThreadMessage {
   return {
@@ -187,6 +190,7 @@ function toThreadMessage(row: {
     botId: row.botId ?? undefined,
     replyToMessageId: row.replyToMessageId ?? undefined,
     runId: row.runId ?? undefined,
+    author: row.author ?? undefined,
     createdAt: row.createdAt.toISOString(),
   };
 }

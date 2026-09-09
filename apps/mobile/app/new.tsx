@@ -3,13 +3,12 @@ import {
   BOT_NAME_MAX_LENGTH,
   BOT_TITLE_MAX_LENGTH,
   type BotVisibility,
-  type ComputerMode,
+  computerModeForVisibility,
   normalizeCreateBotProfile,
 } from "@rakazo/contracts";
 import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, TextInput } from "react-native";
-import { ComputerModePicker } from "../components/computer-mode-picker";
 import { type MobileBot, rpc } from "../lib/api";
 import { allowFocusPrompt, scheduleFocusPrompt } from "../lib/focus-prompt";
 import { useI18n } from "../lib/i18n";
@@ -22,7 +21,6 @@ export default function NewBot() {
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [computerMode, setComputerMode] = useState<ComputerMode>("team");
   const [visibility, setVisibility] = useState<BotVisibility>("private");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -50,7 +48,7 @@ export default function NewBot() {
       const bot = await rpc<MobileBot>("bots/create", {
         ...normalizeCreateBotProfile({ name, title, description }),
         notifyOnFinish: true,
-        computerMode,
+        computerMode: computerModeForVisibility(visibility),
         visibility,
       });
       allowFocusPrompt(bot.id);
@@ -144,7 +142,6 @@ export default function NewBot() {
             textAlignVertical: "top",
           }}
         />
-        <ComputerModePicker value={computerMode} onChange={setComputerMode} />
         <Text style={{ color: tokens.mutedForeground, marginTop: 16, fontSize: 14 }}>
           {t("Access")}
         </Text>

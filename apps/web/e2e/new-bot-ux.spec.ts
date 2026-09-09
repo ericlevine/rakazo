@@ -32,9 +32,10 @@ test("create opens form, then empty chat; picker lists bots; sidebar collapses",
   await expect(form.locator("label:has-text('Name') input")).toBeVisible();
   await expect(form.locator("label:has-text('Title') input")).toBeVisible();
   await expect(form.locator("label:has-text('Description') textarea")).toBeVisible();
-  await expect(form.getByTestId("create-bot-computer")).toBeVisible();
-  await expect(form.getByTestId("create-bot-team")).toBeVisible();
-  await expect(form.getByTestId("create-bot-private")).toBeVisible();
+  await expect(form.getByText("Access", { exact: true })).toBeVisible();
+  await expect(form.getByRole("button", { name: "Private", exact: true })).toBeVisible();
+  await expect(form.getByRole("button", { name: "Workspace", exact: true })).toBeVisible();
+  await expect(form.getByText("Computer", { exact: true })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "create-bot-form");
 
   await form.locator("label:has-text('Name') input").fill("New Bot");
@@ -49,14 +50,11 @@ test("create opens form, then empty chat; picker lists bots; sidebar collapses",
   await expect(page.getByTestId("bots-sidebar")).toHaveAttribute("data-collapsed", "true");
   const edge = page.getByTestId("bots-sidebar-edge");
   await expect(edge).toBeVisible();
+  const restore = page.getByTestId("restore-bots-sidebar");
+  await expect(restore).toBeVisible();
   await captureScreenshot(page, testInfo, "bots-sidebar-collapsed");
 
-  const box = await edge.boundingBox();
-  expect(box).toBeTruthy();
-  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(box!.x + 80, box!.y + box!.height / 2, { steps: 8 });
-  await page.mouse.up();
+  await restore.click();
   await expect(page.getByTestId("bots-sidebar")).toHaveAttribute("data-collapsed", "false");
   await captureScreenshot(page, testInfo, "bots-sidebar-expanded");
 });
@@ -126,20 +124,33 @@ test("later bot waits before showing the focus card; sending cancels it", async 
   await expect(page.getByText("What do you want me on first?", { exact: true })).toHaveCount(0);
 });
 
-test("plus picker can create a Private computer bot", async ({ page }, testInfo) => {
+test("Access choice assigns matching visibility and computer", async ({ page }, testInfo) => {
   const stamp = Date.now();
   await signup(page, `new-bot-private-${stamp}@rakazo.test`, "password12", "New Bot Private");
   await completeOnboarding(page);
   await page.goto("/app");
   await page.waitForURL(/\/app\/[^/]+$/);
 
-  await createBotFromPicker(page, { computerMode: "dedicated" });
+  await createBotFromPicker(page, { visibility: "private" });
   await expect(page.getByPlaceholder("Message New Bot")).toBeVisible();
   await captureScreenshot(page, testInfo, "create-private-computer-bot");
 
   const botId = page.url().split("/").pop()!;
-  const bots = await rpc<Array<{ id: string; computerMode: string }>>(page, "bots/list", {});
-  expect(bots.find((bot) => bot.id === botId)?.computerMode).toBe("dedicated");
+  let bots = await rpc<
+    Array<{ id: string; computerMode: string; visibility: "private" | "workspace" }>
+  >(page, "bots/list", {});
+  expect(bots.find((bot) => bot.id === botId)).toMatchObject({
+    computerMode: "dedicated",
+    visibility: "private",
+  });
+
+  await createBotFromPicker(page, { name: "Shared Bot", visibility: "workspace" });
+  const sharedBotId = page.url().split("/").pop()!;
+  bots = await rpc(page, "bots/list", {});
+  expect(bots.find((bot) => bot.id === sharedBotId)).toMatchObject({
+    computerMode: "team",
+    visibility: "workspace",
+  });
 });
 
 test("second bot from plus opens create form before persist", async ({ page }, testInfo) => {

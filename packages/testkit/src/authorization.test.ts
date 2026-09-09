@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { ComposioEmulator } from "@rakazo/adapters";
-import type { appContract, Space, SpaceNavigation } from "@rakazo/contracts";
+import type { appContract, Space, SpaceNavigation, ThreadMessage } from "@rakazo/contracts";
 import {
   claimEmptySpaceDeletionForMember,
   deleteEmptySpaceForMember,
@@ -958,6 +958,16 @@ describeWithDatabase("API authorization and resource isolation", () => {
         shared.id,
       ),
     ).resolves.toMatchObject({ runId: expect.any(String) });
+    const sharedThread = await rpc<{ messages: ThreadMessage[] }>(
+      app,
+      cookie,
+      "threads/get",
+      { botId: ownerBot.id },
+      shared.id,
+    );
+    expect(sharedThread.messages.find((message) => message.role === "user")).toMatchObject({
+      author: { id: memberActor.userId, name: "Space Member" },
+    });
     await expect(
       raw(app, memberCookie, "bots/update", { botId: ownerBot.id, name: "Not allowed" }, shared.id),
     ).resolves.toMatchObject({ status: 404 });

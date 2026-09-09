@@ -46,6 +46,7 @@ export interface CreateThreadMessageInput {
   replyToMessageId?: string;
   runId?: string;
   clientNonce?: string;
+  authorUserId?: string;
   markUnread?: boolean;
 }
 
@@ -68,18 +69,25 @@ export async function createThreadMessageInTransaction(
     select: { nextMessageSeq: true },
   });
   await assertRunCanWriteHistory(tx, input.runId);
-  return tx.message.create({
-    data: {
-      threadId: input.threadId,
-      seq: thread.nextMessageSeq - 1,
-      role: input.role,
-      blocks: input.blocks as Prisma.InputJsonValue,
-      botId: input.botId,
-      replyToMessageId: input.replyToMessageId,
-      runId: input.runId,
-      clientNonce: input.clientNonce,
-    },
-  });
+  const data = {
+    threadId: input.threadId,
+    seq: thread.nextMessageSeq - 1,
+    role: input.role,
+    blocks: input.blocks as Prisma.InputJsonValue,
+    botId: input.botId,
+    replyToMessageId: input.replyToMessageId,
+    runId: input.runId,
+    clientNonce: input.clientNonce,
+    authorUserId: input.authorUserId,
+  };
+  if (input.authorUserId) {
+    return tx.message.create({
+      data,
+      include: { author: { select: { id: true, name: true } } },
+    });
+  }
+  const message = await tx.message.create({ data });
+  return { ...message, author: null };
 }
 
 export class RunHistoryWriteError extends Error {

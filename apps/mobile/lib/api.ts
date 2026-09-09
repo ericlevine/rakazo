@@ -716,6 +716,7 @@ export type MobileMessage = {
   role: "user" | "bot" | "system";
   botId?: string;
   replyToMessageId?: string;
+  author?: { id: string; name: string };
   createdAt?: string;
   blocks: MessageBlock[];
 };
@@ -1071,8 +1072,20 @@ export function applyMobileThreadEvent(
   }
   if (event.type === "thread.message.created" || event.type === "thread.message.updated") {
     const { remaining } = takeLiveMessage(prev.messages, progressMessageId(event));
+    const payloadAuthor = event.payload?.author;
+    const author =
+      payloadAuthor &&
+      typeof payloadAuthor === "object" &&
+      "id" in payloadAuthor &&
+      typeof payloadAuthor.id === "string" &&
+      "name" in payloadAuthor &&
+      typeof payloadAuthor.name === "string"
+        ? { id: payloadAuthor.id, name: payloadAuthor.name }
+        : undefined;
+    const messageId = String(event.payload?.messageId ?? event.id ?? `msg:${event.seq ?? 0}`);
+    const previousMessage = prev.messages.find((message) => message.id === messageId);
     const next: MobileMessage = {
-      id: String(event.payload?.messageId ?? event.id ?? `msg:${event.seq ?? 0}`),
+      id: messageId,
       runId: event.runId ? String(event.runId) : undefined,
       role: (event.payload?.role as MobileMessage["role"]) ?? "bot",
       blocks: (event.payload?.blocks as MobileMessage["blocks"]) ?? [],
@@ -1080,6 +1093,7 @@ export function applyMobileThreadEvent(
       replyToMessageId: event.payload?.replyToMessageId
         ? String(event.payload.replyToMessageId)
         : undefined,
+      author: author ?? previousMessage?.author,
     };
     return {
       ...prev,

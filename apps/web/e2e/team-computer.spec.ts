@@ -66,7 +66,7 @@ test("Team Computer gives bots a home folder plus shared space while Private sta
     ok: false,
   });
 
-  await setComputerMode(page, "Private Writer", privateId, "team");
+  await setComputerMode(page, privateId, "team");
   await expect(readFileResponse(page, privateId, "notes/result.txt")).resolves.toMatchObject({
     ok: false,
   });
@@ -75,7 +75,7 @@ test("Team Computer gives bots a home folder plus shared space while Private sta
   );
   await captureScreenshot(page, testInfo, "44-private-bot-joined-team-computer");
 
-  await setComputerMode(page, "Private Writer", privateId, "dedicated");
+  await setComputerMode(page, privateId, "dedicated");
   await expect(readFile(page, privateId, "notes/result.txt")).resolves.toContain(privateMarker);
   await expect(readFile(page, writerId, "notes/result.txt")).resolves.toContain(personalMarker);
   await captureScreenshot(page, testInfo, "45-private-computer-restored");
@@ -234,23 +234,8 @@ async function createBot(page: Page, name: string, mode: "team" | "dedicated") {
   return createNamedBot(page, name, { computerMode: mode });
 }
 
-async function setComputerMode(
-  page: Page,
-  botName: string,
-  botId: string,
-  mode: "team" | "dedicated",
-) {
-  await page.getByRole("button", { name: botName, exact: true }).last().click();
-  const settings = page.getByTestId("bot-settings");
-  await expect(settings.locator("label:has-text('Name') input")).toHaveValue(botName);
-  const advanced = settings.getByTestId("bot-settings-advanced");
-  await advanced.evaluate((element) => {
-    (element as HTMLDetailsElement).open = true;
-  });
-  await settings
-    .getByRole("button", { name: mode === "team" ? "Team" : "Private", exact: true })
-    .click();
-  await settings.getByRole("button", { name: "Save", exact: true }).click();
+async function setComputerMode(page: Page, botId: string, mode: "team" | "dedicated") {
+  await rpc(page, "bots/setComputer", { botId, mode });
   await expect
     .poll(async () => {
       const bots = await rpc<Array<{ id: string; computerMode: string }>>(page, "bots/list", {});

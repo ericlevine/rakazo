@@ -623,6 +623,7 @@ export async function sendThreadMessage(
           blocks,
           replyToMessageId: input.replyToMessageId,
           clientNonce: input.clientNonce,
+          authorUserId: actor.userId,
         });
         const activeRuns = await tx.run.findMany({
           where: {
@@ -659,6 +660,7 @@ export async function sendThreadMessage(
               role: "user",
               blocks,
               replyToMessageId: input.replyToMessageId,
+              author: message.author ?? undefined,
             },
           });
           return { message, runs: [active], eventSeq: event.seq };
@@ -704,6 +706,7 @@ export async function sendThreadMessage(
             blocks,
             runIds: [run.id],
             replyToMessageId: input.replyToMessageId,
+            author: message.author ?? undefined,
           },
         });
         return { message, runs: [run], eventSeq: event.seq };
@@ -736,6 +739,7 @@ export async function sendThreadMessage(
         blocks,
         replyToMessageId: input.replyToMessageId,
         clientNonce: input.clientNonce,
+        authorUserId: actor.userId,
       });
       const activeRuns = await tx.run.findMany({
         where: {
@@ -816,6 +820,7 @@ export async function sendThreadMessage(
           blocks,
           runIds: runs.map((run) => run.id),
           replyToMessageId: input.replyToMessageId,
+          author: message.author ?? undefined,
         },
       });
       return { message, runs, eventSeq: event.seq };
@@ -872,6 +877,7 @@ export async function reactToThreadMessage(
       blocks,
       replyToMessageId: parent.id,
       clientNonce: input.clientNonce,
+      authorUserId: actor.userId,
     });
     if (target.kind === "group") await touchGroupUpdatedAt(tx, target.groupId);
     const event = await appendEventInTransaction(tx, {
@@ -879,7 +885,13 @@ export async function reactToThreadMessage(
       threadId: target.threadId,
       botId,
       type: "thread.message.created",
-      payload: { messageId: message.id, role: "user", blocks, replyToMessageId: parent.id },
+      payload: {
+        messageId: message.id,
+        role: "user",
+        blocks,
+        replyToMessageId: parent.id,
+        author: message.author ?? undefined,
+      },
     });
     return { eventSeq: event.seq };
   });

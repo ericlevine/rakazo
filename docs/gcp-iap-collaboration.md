@@ -18,7 +18,9 @@ and issues its ordinary session cookie.
 - The first admitted identity owns the deployment. Additional admitted
   identities join the owner's default organization and space as members.
   Agents are private by default; an owner can make an agent workspace-visible
-  so other space members can use its shared conversation. Agent management,
+  so other space members can use its shared conversation. Human messages store
+  and display their authenticated author so collaborators can distinguish turns.
+  Agent management,
   user memory, notification settings, and personal credentials remain
   user-scoped.
 

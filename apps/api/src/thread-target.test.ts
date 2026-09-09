@@ -120,7 +120,9 @@ describe("reaction messages", () => {
         blocks: [{ kind: "text", text: "❤️" }],
         replyToMessageId: "parent",
         clientNonce: "third",
+        authorUserId: actor.userId,
       }),
+      include: { author: { select: { id: true, name: true } } },
     });
     expect(tx.event.create).toHaveBeenLastCalledWith({
       data: expect.objectContaining({

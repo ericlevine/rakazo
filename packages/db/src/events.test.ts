@@ -1456,6 +1456,10 @@ describe("sendUserMessage", () => {
       ),
     ).resolves.toEqual({ messageId: "message-1", seq: 4, taskId: "task-1", runId: "run-1" });
 
+    expect(tx.message.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ authorUserId: "user-1" }),
+      include: { author: { select: { id: true, name: true } } },
+    });
     expect(tx.run.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

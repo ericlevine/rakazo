@@ -73,6 +73,7 @@ describe("thread event reduction", () => {
           role: "user",
           blocks: [{ kind: "text", text: "❤️" }],
           replyToMessageId: "message-1",
+          author: { id: "user-2", name: "Teammate" },
         },
       }),
     );
@@ -81,6 +82,7 @@ describe("thread event reduction", () => {
       role: "user",
       blocks: [{ kind: "text", text: "❤️" }],
       replyToMessageId: "message-1",
+      author: { id: "user-2", name: "Teammate" },
     });
     expect(next?.cursor).toBe(4);
   });

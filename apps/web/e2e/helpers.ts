@@ -101,7 +101,7 @@ export async function createBotFromPicker(
     name?: string;
     title?: string;
     description?: string;
-    computerMode?: "team" | "dedicated";
+    visibility?: "private" | "workspace";
   } = {},
 ) {
   const name = options.name ?? "New Bot";
@@ -114,10 +114,13 @@ export async function createBotFromPicker(
   if (options.description != null) {
     await form.locator("label:has-text('Description') textarea").fill(options.description);
   }
-  if (options.computerMode === "dedicated") {
-    await form.getByTestId("create-bot-private").click();
-  } else if (options.computerMode === "team") {
-    await form.getByTestId("create-bot-team").click();
+  if (options.visibility) {
+    await form
+      .getByRole("button", {
+        name: options.visibility === "private" ? "Private" : "Workspace",
+        exact: true,
+      })
+      .click();
   }
   await form.getByRole("button", { name: "Create", exact: true }).click();
   await page.waitForURL(/\/app\/[^/]+$/);

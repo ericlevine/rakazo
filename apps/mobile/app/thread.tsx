@@ -1448,6 +1448,7 @@ function Thread() {
               botId={botId ?? snap?.members?.[0]?.botId ?? ""}
               groupId={groupId}
               message={message}
+              showAuthor={currentBot?.visibility === "workspace"}
               botName={displayName}
               bots={mentionBots}
               members={snap?.members}
@@ -2285,6 +2286,7 @@ const MessageBubble = memo(function MessageBubble({
   bots,
   groupId,
   message,
+  showAuthor,
   members,
   replyPreview,
   canAnswer,
@@ -2298,6 +2300,7 @@ const MessageBubble = memo(function MessageBubble({
   bots: MobileBot[];
   groupId?: string;
   message: MobileMessage;
+  showAuthor: boolean;
   members?: MobileSnapshot["members"];
   replyPreview?: MobileMessage;
   canAnswer: boolean;
@@ -2700,7 +2703,11 @@ const MessageBubble = memo(function MessageBubble({
     .join("\n");
   if (attachments.length > 0) {
     const speaker =
-      message.role === "bot" ? (memberName(members, message.botId) ?? botName) : undefined;
+      message.role === "bot"
+        ? (memberName(members, message.botId) ?? botName)
+        : showAuthor
+          ? message.author?.name
+          : undefined;
     return (
       <View
         style={{
@@ -2833,7 +2840,11 @@ const MessageBubble = memo(function MessageBubble({
   }
   const segments = messagePresentationSegments(message.blocks);
   const speaker =
-    message.role === "bot" ? (memberName(members, message.botId) ?? botName) : undefined;
+    message.role === "bot"
+      ? (memberName(members, message.botId) ?? botName)
+      : showAuthor
+        ? message.author?.name
+        : undefined;
   const firstContent = segments.findIndex((segment) => segment.kind === "content");
   return (
     <View style={{ gap: 8, width: "100%" }}>

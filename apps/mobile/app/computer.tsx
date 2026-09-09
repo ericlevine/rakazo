@@ -1,4 +1,4 @@
-import type { ComputerMode, ComputerReleaseReason } from "@rakazo/contracts";
+import type { ComputerReleaseReason } from "@rakazo/contracts";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
@@ -9,7 +9,6 @@ import {
 } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import { ComputerMaintenanceActions } from "../components/computer-maintenance-actions";
-import { ComputerModePicker } from "../components/computer-mode-picker";
 import { NativeSymbol } from "../components/native-symbol";
 import { currentApiBase, rpc } from "../lib/api";
 import {
@@ -38,9 +37,7 @@ export default function Computer() {
   const [error, setError] = useState<string | null>(null);
   const [readyBotId, setReadyBotId] = useState<string | null>(null);
   const [bootingCount, setBootingCount] = useState(0);
-  const [switchingCount, setSwitchingCount] = useState(0);
   const booting = bootingCount > 0;
-  const switching = switchingCount > 0;
   const [computerOpen, setComputerOpen] = useState(false);
   const autoBooted = useRef<string | null>(null);
 
@@ -78,7 +75,6 @@ export default function Computer() {
     setError(null);
     setReadyBotId(null);
     setBootingCount(0);
-    setSwitchingCount(0);
     setComputerOpen(false);
     autoBooted.current = null;
     if (botId) refreshController.start();
@@ -119,7 +115,7 @@ export default function Computer() {
   }
 
   useEffect(() => {
-    if (!botId || readyBotId !== botId || switching) return;
+    if (!botId || readyBotId !== botId) return;
     if (computer?.state === "booting" || computer?.state === "suspended") return;
     if (autoBooted.current === botId) return;
     autoBooted.current = botId;
@@ -128,7 +124,7 @@ export default function Computer() {
       overlay: computer?.state !== "running",
       force: true,
     }).catch(() => undefined);
-  }, [readyBotId, botId, computer?.state, switching]);
+  }, [readyBotId, botId, computer?.state]);
 
   useEffect(() => {
     if (!botId || computer?.state !== "running") return;
@@ -166,34 +162,6 @@ export default function Computer() {
     } catch {
       if (action.isActive()) setScreenError(t("Could not continue"));
     } finally {
-      action.finish();
-    }
-  }
-
-  async function setComputerMode(mode: ComputerMode) {
-    if (!botId || !refreshController.isActive() || mode === computer?.mode) return;
-    const action = refreshController.beginAction();
-    setSwitchingCount((count) => count + 1);
-    setError(null);
-    try {
-      if (hasControl) {
-        await rpc("computer/release", {
-          botId,
-          reason: computer?.takeoverRequested ? "skipped" : undefined,
-        });
-      }
-      if (!action.isActive()) return;
-      await rpc("bots/setComputer", { botId, mode });
-      if (!action.isActive()) return;
-      setComputer(null);
-      setScreenUrl(null);
-      autoBooted.current = null;
-      await action.refresh();
-    } catch (err) {
-      if (!action.isActive()) return;
-      setError(err instanceof Error ? err.message : t("Could not switch computer"));
-    } finally {
-      if (action.isActive()) setSwitchingCount((count) => count - 1);
       action.finish();
     }
   }
@@ -282,12 +250,6 @@ export default function Computer() {
           }}
         />
       ) : null}
-      <ComputerModePicker
-        value={computer?.mode}
-        disabled={switching}
-        onChange={(mode) => void setComputerMode(mode)}
-      />
-
       <Modal
         visible={booting || computerOpen}
         animationType="fade"

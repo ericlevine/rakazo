@@ -4,7 +4,7 @@ import {
   BOT_NAME_MAX_LENGTH,
   BOT_TITLE_MAX_LENGTH,
   type BotVisibility,
-  type ComputerMode,
+  computerModeForVisibility,
   normalizeCreateBotProfile,
   type ThinkingLevel,
 } from "@rakazo/contracts";
@@ -12,7 +12,6 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { BotAvatar } from "../components/bot-avatar";
-import { ComputerModePicker } from "../components/computer-mode-picker";
 import {
   type MobileBot,
   type MobileMe,
@@ -51,7 +50,6 @@ export default function BotSettingsScreen() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState<string>(BOT_COLORS[0]);
-  const [computerMode, setComputerMode] = useState<ComputerMode>("team");
   const [visibility, setVisibility] = useState<BotVisibility>("private");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [modelKey, setModelKey] = useState("");
@@ -77,7 +75,6 @@ export default function BotSettingsScreen() {
         setTitle(next.title);
         setDescription(next.description ?? "");
         setColor(next.color);
-        setComputerMode(next.computerMode);
         setVisibility(next.visibility);
         setModelKey(
           next.modelProvider && next.modelId
@@ -271,6 +268,7 @@ export default function BotSettingsScreen() {
           ? ((thinkingLevel || null) as ThinkingLevel | null)
           : null;
       }
+      const computerMode = computerModeForVisibility(visibility);
       if (computerMode !== bot.computerMode) {
         await rpc("bots/setComputer", { botId, mode: computerMode });
       }
@@ -379,7 +377,6 @@ export default function BotSettingsScreen() {
             />
           ))}
         </ScrollView>
-        <ComputerModePicker value={computerMode} onChange={setComputerMode} />
         <Text style={{ color: tokens.mutedForeground, marginTop: 16, fontSize: 14 }}>
           {t("Access")}
         </Text>

@@ -291,6 +291,12 @@ export const ThreadMessageSchema = z.object({
   botId: Id.optional(),
   replyToMessageId: Id.optional(),
   runId: Id.optional(),
+  author: z
+    .object({
+      id: Id,
+      name: z.string(),
+    })
+    .optional(),
   createdAt: z.string(),
 });
 export type ThreadMessage = z.infer<typeof ThreadMessageSchema>;

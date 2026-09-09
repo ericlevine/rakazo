@@ -476,14 +476,27 @@ export function reduceThreadSnapshot(
   if (event.type === "thread.message.created" || event.type === "thread.message.updated") {
     const role = (event.payload.role as ThreadMessage["role"]) ?? "bot";
     const blocks = (event.payload.blocks as ThreadMessage["blocks"]) ?? [];
+    const payloadAuthor = event.payload.author;
+    const author =
+      payloadAuthor &&
+      typeof payloadAuthor === "object" &&
+      "id" in payloadAuthor &&
+      typeof payloadAuthor.id === "string" &&
+      "name" in payloadAuthor &&
+      typeof payloadAuthor.name === "string"
+        ? { id: payloadAuthor.id, name: payloadAuthor.name }
+        : undefined;
+    const messageId = String(event.payload.messageId ?? event.id);
+    const previousMessage = prev.messages.find((message) => message.id === messageId);
     const next: ThreadMessage = {
-      id: String(event.payload.messageId ?? event.id),
+      id: messageId,
       threadId: event.threadId,
       seq: event.seq,
       role,
       blocks,
       botId: event.botId,
       runId: event.runId,
+      author: author ?? previousMessage?.author,
       replyToMessageId:
         typeof event.payload.replyToMessageId === "string"
           ? event.payload.replyToMessageId
