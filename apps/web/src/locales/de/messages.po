@@ -2486,7 +2486,7 @@ msgid "on the 1st at {0}"
 msgstr "am 1. um {0}"
 
 #: src/pages/shell/dialogs.tsx:135
-msgid "One conversation with 2–6 of your bots in a shared thread. Name the group, pick its members, and they all reply in the same chat."
+msgid "One conversation with 1–6 of your bots in a shared thread. Name the group, pick its members, and they all reply in the same chat."
 msgstr ""
 
 #: src/pages/Shell.tsx:3731

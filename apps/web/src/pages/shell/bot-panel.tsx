@@ -186,6 +186,7 @@ export function BotSettings({
   onSave,
   onExport,
   onClear,
+  onArchive,
 }: {
   bot: Bot;
   onSkillsChange: (skills: AgentSkillCatalogEntry[]) => void;
@@ -207,6 +208,7 @@ export function BotSettings({
   }) => Promise<void>;
   onExport: () => Promise<void>;
   onClear: () => void;
+  onArchive: () => Promise<void>;
 }) {
   const { t } = useLingui();
   const [advancedOpened, setAdvancedOpened] = useState(false);
@@ -542,6 +544,9 @@ export function BotSettings({
           onClick={onClear}
         >
           <Trans>Clear conversation</Trans>
+        </Button>
+        <Button variant="ghost" size="sm" className="-ms-2.5" onClick={() => void onArchive()}>
+          <Trans>Archive</Trans>
         </Button>
       </div>
     </div>

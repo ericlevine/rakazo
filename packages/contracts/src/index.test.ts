@@ -125,6 +125,10 @@ describe("contracts", () => {
   });
 
   it("normalizes group names and rejects duplicate members", () => {
+    expect(CreateGroupInput.parse({ name: "  Marketing  ", botIds: ["bot-1"] })).toEqual({
+      name: "Marketing",
+      botIds: ["bot-1"],
+    });
     expect(CreateGroupInput.parse({ name: "  Draft team  ", botIds: ["bot-1", "bot-2"] })).toEqual({
       name: "Draft team",
       botIds: ["bot-1", "bot-2"],

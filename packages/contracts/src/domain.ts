@@ -98,7 +98,7 @@ export const GroupMemberSchema = z.object({
 });
 export type GroupMember = z.infer<typeof GroupMemberSchema>;
 
-export const GROUP_MEMBER_MIN = 2;
+export const GROUP_MEMBER_MIN = 1;
 export const GROUP_MEMBER_MAX = 6;
 
 export const GroupSchema = z.object({

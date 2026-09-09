@@ -12,6 +12,30 @@ async function createBot(page: Page, name: string) {
   return createNamedBot(page, name);
 }
 
+test("creates a topic group with one bot", async ({ page }) => {
+  const stamp = Date.now();
+  await signup(page, `single-group-${stamp}@rakazo.test`, "password12", "Single Group E2E");
+  await completeOnboarding(page);
+  await page.goto("/app");
+  await page.waitForURL(/\/app\/[^/]+$/);
+
+  await openNewGroup(page);
+  const panel = page.getByTestId("side-panel");
+  await panel.locator("label:has-text('Name') input").fill("Marketing topic");
+  await panel.getByRole("button", { name: "Chief" }).click();
+  await expect(panel.getByRole("button", { name: "Create group", exact: true })).toBeEnabled();
+  await panel.getByRole("button", { name: "Create group", exact: true }).click();
+  await page.waitForURL(/\/app\/g\/[^/]+$/);
+  await expect(page.getByRole("combobox", { name: "Message Marketing topic" })).toBeVisible();
+
+  const groups = await rpc<Array<{ name: string; members: Array<{ botId: string }> }>>(
+    page,
+    "groups/list",
+    {},
+  );
+  expect(groups.find((group) => group.name === "Marketing topic")?.members).toHaveLength(1);
+});
+
 test("create group from + and see two bots in one transcript", async ({ page }, testInfo) => {
   const stamp = Date.now();
   await signup(page, `group-${stamp}@rakazo.test`, "password12", "Group E2E");

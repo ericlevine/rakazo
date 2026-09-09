@@ -29,6 +29,7 @@ prefix="${instance}-iap"
 group="${prefix}-ig"
 health_check="${prefix}-health"
 backend="${prefix}-backend"
+screen_backend="${prefix}-screen-backend"
 address="${prefix}-ip"
 certificate="${prefix}-certificate"
 url_map="${prefix}-url-map"
@@ -64,6 +65,21 @@ if ! gcloud compute backend-services describe "${backend}" --project="${project_
 fi
 gcloud compute backend-services update "${backend}" --project="${project_id}" --global --iap=enabled
 
+# noVNC loads JavaScript and opens a WebSocket from inside an iframe. Those
+# subrequests cannot complete an IAP OAuth redirect, so route only the signed,
+# short-lived screen capability path through a backend without IAP. Rakazo's
+# screen proxy validates the capability before connecting to a computer.
+if ! gcloud compute backend-services describe "${screen_backend}" --project="${project_id}" \
+  --global >/dev/null 2>&1; then
+  gcloud compute backend-services create "${screen_backend}" --project="${project_id}" --global \
+    --load-balancing-scheme=EXTERNAL_MANAGED --protocol=HTTP --port-name=http \
+    --health-checks="${health_check}"
+  gcloud compute backend-services add-backend "${screen_backend}" --project="${project_id}" --global \
+    --instance-group="${group}" --instance-group-zone="${zone}"
+fi
+gcloud compute backend-services update "${screen_backend}" --project="${project_id}" --global \
+  --iap=disabled
+
 if ! gcloud compute firewall-rules describe "${prefix}-allow-gfe" --project="${project_id}" >/dev/null 2>&1; then
   gcloud compute firewall-rules create "${prefix}-allow-gfe" --project="${project_id}" \
     --network="${network}" --direction=INGRESS --action=ALLOW --rules=tcp:8080 \
@@ -82,6 +98,13 @@ fi
 if ! gcloud compute url-maps describe "${url_map}" --project="${project_id}" >/dev/null 2>&1; then
   gcloud compute url-maps create "${url_map}" --project="${project_id}" \
     --default-service="${backend}"
+fi
+path_matcher="${prefix}-paths"
+if ! gcloud compute url-maps describe "${url_map}" --project="${project_id}" \
+  --format='value(pathMatchers.name)' | tr ';' '\n' | grep -Fxq "${path_matcher}"; then
+  gcloud compute url-maps add-path-matcher "${url_map}" --project="${project_id}" --global \
+    --path-matcher-name="${path_matcher}" --default-service="${backend}" \
+    --backend-service-path-rules="/novnc/*=${screen_backend}" --new-hosts="${hostname}"
 fi
 if ! gcloud compute target-https-proxies describe "${proxy}" --project="${project_id}" >/dev/null 2>&1; then
   gcloud compute target-https-proxies create "${proxy}" --project="${project_id}" \

@@ -33,8 +33,12 @@ The VM has no public IP. Docker publishes the web and API ports on loopback.
 Host nginx listens on port 8080 and routes `/api`, `/rpc`, and `/health` to the
 API and all other paths to the web container. The only VPC ingress to 8080 is
 from Google's load-balancer and health-check ranges. HTTPS terminates at the
-global external Application Load Balancer, with IAP enabled on its backend.
-IAP TCP forwarding to SSH remains the administrative path.
+global external Application Load Balancer. IAP protects the application
+backend. `/novnc/*` uses a separate backend without IAP because iframe scripts
+and WebSockets cannot complete an IAP OAuth redirect; Rakazo protects that path
+with signed, short-lived view/control capabilities and rejects unsigned,
+expired, or altered targets. No other application path bypasses IAP. IAP TCP
+forwarding to SSH remains the administrative path.
 
 For a team-wide model credential, set the matching server-side key (for
 example `OPENAI_API_KEY`) together with `PI_DEFAULT_PROVIDER` and

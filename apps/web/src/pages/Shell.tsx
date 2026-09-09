@@ -3401,6 +3401,11 @@ export function ShellPage() {
                   URL.revokeObjectURL(url);
                 }}
                 onClear={() => setClearTarget({ kind: "bot", chat: active })}
+                onArchive={async () => {
+                  await rpc.bots.archive({ botId: active.id });
+                  setPanel(null);
+                  await refreshBots(true);
+                }}
               />
             ) : null}
             {panel === "routine" && active ? (

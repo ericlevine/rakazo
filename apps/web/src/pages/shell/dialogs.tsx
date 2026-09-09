@@ -133,7 +133,7 @@ export function PickerInfoDialog({
           <DialogDescription>
             {topic === "group" ? (
               <Trans>
-                One conversation with 2–6 of your bots in a shared thread. Name the group, pick its
+                One conversation with 1–6 of your bots in a shared thread. Name the group, pick its
                 members, and they all reply in the same chat.
               </Trans>
             ) : (

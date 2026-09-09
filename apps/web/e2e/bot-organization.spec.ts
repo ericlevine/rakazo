@@ -1,6 +1,22 @@
 import { expect, test } from "@playwright/test";
 import { activeBotId, captureScreenshot, completeOnboarding, rpc, signup } from "./helpers";
 
+test("archives a bot from its settings", async ({ page }) => {
+  const stamp = Date.now();
+  await signup(page, `bot-archive-${stamp}@rakazo.test`, "password12", "Bot Archive");
+  await completeOnboarding(page);
+  await page.goto("/app");
+  await page.waitForURL(/\/app\/[^/]+$/);
+
+  await page.getByTestId("bot-settings-trigger").click();
+  const panel = page.getByTestId("side-panel");
+  await panel.getByRole("button", { name: "Archive", exact: true }).click();
+
+  const sidebar = page.locator("aside").first();
+  await expect(sidebar.getByRole("button", { name: /^Chief/ })).toHaveCount(0);
+  await expect(sidebar.getByText("Archived", { exact: true })).toBeVisible();
+});
+
 test("pinned bots and sidebar sections persist", async ({ page }, testInfo) => {
   const stamp = Date.now();
   await signup(page, `bot-organize-${stamp}@rakazo.test`, "password12", "Test User");
