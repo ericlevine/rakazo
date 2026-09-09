@@ -3,7 +3,11 @@ import { resolveDeploymentModel } from "./deployment-model.js";
 
 describe("resolveDeploymentModel", () => {
   it("pairs the deployment model key with the provider it belongs to", () => {
-    const both = { OPENROUTER_API_KEY: "or-key", ANTHROPIC_API_KEY: "sk-ant-key" };
+    const both = {
+      OPENROUTER_API_KEY: "or-key",
+      ANTHROPIC_API_KEY: "sk-ant-key",
+      OPENAI_API_KEY: "sk-openai-key",
+    };
     expect(resolveDeploymentModel(both)).toEqual({
       provider: "openrouter",
       model: "openai/gpt-5.6-luna",
@@ -14,6 +18,11 @@ describe("resolveDeploymentModel", () => {
       provider: "anthropic",
       model: "claude-sonnet-5",
       key: "sk-ant-key",
+    });
+    expect(resolveDeploymentModel({ ...both, PI_DEFAULT_PROVIDER: "openai" })).toEqual({
+      provider: "openai",
+      model: "gpt-5.6-sol",
+      key: "sk-openai-key",
     });
     // A provider with no key configured yields no key — never another vendor's.
     expect(

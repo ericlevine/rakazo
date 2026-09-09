@@ -56,7 +56,7 @@ From `.env.images.example` (images installer). Leave blank if unused:
 
 | Key(s) | When needed |
 | --- | --- |
-| `OPENROUTER_API_KEY` | Deployment-wide OpenRouter models |
+| `OPENROUTER_API_KEY` / `OPENAI_API_KEY` | Deployment-wide OpenRouter or OpenAI models |
 | `COMPOSIO_API_KEY` | Composio managed catalog |
 | `E2B_API_KEY` / `DAYTONA_API_KEY` / `BOX_API_KEY` | Remote computers when `SANDBOX_PROVIDER` is not `docker` |
 | `SMTP_URL` / `EMAIL_FROM` | Password-recovery email |

@@ -32,6 +32,11 @@ from Google's load-balancer and health-check ranges. HTTPS terminates at the
 global external Application Load Balancer, with IAP enabled on its backend.
 IAP TCP forwarding to SSH remains the administrative path.
 
+For a team-wide model credential, set the matching server-side key (for
+example `OPENAI_API_KEY`) together with `PI_DEFAULT_PROVIDER` and
+`PI_DEFAULT_MODEL`. It is available to all admitted users for inference but is
+never returned to the browser. UI-connected model credentials remain personal.
+
 Run `infra/gcp/iap/configure-host-proxy.sh` as root on the VM, then run
 `infra/gcp/iap/provision-load-balancer.sh` from an authenticated workstation.
 The latter prints the exact audience and load-balancer IP. Keep real project
