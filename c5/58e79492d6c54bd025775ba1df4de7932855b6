@@ -1,0 +1,19 @@
+packages/adapters/src/child-bots.test.ts
+  s_09251b544e61f7::t_0cfe65d2e4f4fc 297,350-354,402,413
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "c558e79492d6c54bd025775ba1df4de7932855b6",
+  "prompts": {},
+  "sessions": {
+    "s_09251b544e61f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "488f6912-7a4b-48fe-8d6b-3743cc04f8bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eric Levine <eric@clawvisor.com>"
+    }
+  }
+}
