@@ -1,0 +1,87 @@
+apps/api/src/router.ts
+  s_09251b544e61f7::t_82d78c276b7209 1230,1247,1265-1268,4762-4763
+apps/api/src/thread-target.ts
+  s_09251b544e61f7::t_df5a618233788a 27,240,245,252-262,267-274
+apps/mobile/app/group-settings.tsx
+  s_09251b544e61f7::t_38eb5efe1a8023 1,19,36,47-52,56-57,108-139,144
+apps/mobile/app/index.tsx
+  s_09251b544e61f7::t_2d43d2df4e9d1d 624,642
+apps/mobile/app/new-group.tsx
+  s_09251b544e61f7::t_ac019910a194b8 1,17,41,76-107,112
+apps/mobile/app/thread.tsx
+  s_09251b544e61f7::t_cf58b731278c13 298,559,590,636-658
+apps/mobile/lib/api.ts
+  s_09251b544e61f7::t_a8fca4f837ce58 735-736
+apps/mobile/lib/inbox-spaces.test.ts
+  s_09251b544e61f7::t_e1e8f1e5dd63c7 94-98,115-116,119,125
+apps/mobile/lib/inbox-spaces.ts
+  s_09251b544e61f7::t_9209f568e2e71f 42-55
+apps/mobile/lib/locales/ru.ts
+  s_09251b544e61f7::t_6d304336258442 187,342
+apps/mobile/lib/locales/zh.ts
+  s_09251b544e61f7::t_117d551ad598a4 174,327
+apps/web/e2e/bot-organization.spec.ts
+  s_09251b544e61f7::t_26c3c0be7af764 4-42,71,76,88,103-105,285-287,300-302
+apps/web/e2e/group-chats.spec.ts
+  s_09251b544e61f7::t_1161b9983a4d53 3,22-24,29,36-42
+apps/web/src/locales/de/messages.po
+  s_09251b544e61f7::t_b36c7def3dbeef 2329-2332
+apps/web/src/locales/en/messages.po
+  s_09251b544e61f7::t_0d40525101e22f 2329-2332
+apps/web/src/locales/es/messages.po
+  s_09251b544e61f7::t_9dabc893ec9586 2329-2332
+apps/web/src/locales/hi/messages.po
+  s_09251b544e61f7::t_a8a2591b4a22f3 2329-2332
+apps/web/src/locales/ko/messages.po
+  s_09251b544e61f7::t_7cf11557ee82e4 2329-2332
+apps/web/src/locales/pt-BR/messages.po
+  s_09251b544e61f7::t_419d144160427b 2329-2332
+apps/web/src/locales/ru/messages.po
+  s_09251b544e61f7::t_a7354ba94b3b7d 2329-2332
+apps/web/src/locales/tr/messages.po
+  s_09251b544e61f7::t_b6f4e842e89eab 2329-2332
+apps/web/src/locales/zh-CN/messages.po
+  s_09251b544e61f7::t_d8cb9df1cd6982 2329-2332
+apps/web/src/pages/BotContextMenu.tsx
+  s_09251b544e61f7::t_f40a749fbdfbda 22,43,58,130-135
+apps/web/src/pages/GroupPanel.tsx
+  s_09251b544e61f7::t_5e8a7e19499e8e 2-8,12,33,39,41-47,90,96,105,144-155,166,187-191,198,224,255-266,277
+apps/web/src/pages/Shell.tsx
+  s_09251b544e61f7::t_9d95bd5b49e0cc 1315-1319,1321-1344,1362,2143,3059,3118-3120,3188,3358,3593-3604
+apps/web/src/pages/shell/bot-panel.tsx
+  s_09251b544e61f7::t_364095cdc1507b 45
+docs/gcp-iap-collaboration.md
+  s_09251b544e61f7::t_52adf5301efbe5 23-27
+packages/contracts/src/domain.ts
+  s_09251b544e61f7::t_2be62a743f756b 108-109,131,141,192-193
+packages/contracts/src/index.test.ts
+  s_09251b544e61f7::t_e5414c0c1f8c90 131,136
+packages/db/prisma/migrations/20260909210000_group_workspace_visibility/migration.sql
+  s_09251b544e61f7::t_c2fa6c8f1ec109 1-5
+packages/db/prisma/schema.prisma
+  s_09251b544e61f7::t_ec03239fcc0c6b 419,431
+packages/db/src/groups.test.ts
+  s_09251b544e61f7::t_e74dfe0e831d7b 12,14,59-60,73
+packages/db/src/groups.ts
+  s_09251b544e61f7::t_05c67ea84ca17f 21,48-49,65,72-73,86,92-93,117,131,138,192,199-200,224,232-234,246,256-261,279,293-296,298-303,314,332,343,359-364,377-385,426,438,564-580
+packages/testkit/src/authorization.test.ts
+  s_09251b544e61f7::t_d0fe9a0b296e45 5,949-990,1038-1039
+packages/testkit/src/journeys.test.ts
+  s_09251b544e61f7::t_e4c5a23fa0de94 2102-2106,2111,2118-2121,2134,2160,2176,2179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "0d3ad7312589bc401b40d6f6a8baf862e2dfaa2c",
+  "prompts": {},
+  "sessions": {
+    "s_09251b544e61f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "488f6912-7a4b-48fe-8d6b-3743cc04f8bc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eric Levine <eric@clawvisor.com>"
+    }
+  }
+}
